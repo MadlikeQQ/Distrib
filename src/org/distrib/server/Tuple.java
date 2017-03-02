@@ -1,10 +1,10 @@
 package org.distrib.server;
 
-public class Tuple {
-	 public final String id; 
-	    public final int port; 
-	    public Tuple(String id, int port) { 
-	        this.id = id; 
-	        this.port = port;
+public class Tuple<A,B> {
+	 public final A a; 
+	    public final B b; 
+	    public Tuple(A a, B b) { 
+	        this.a = a; 
+	        this.b = b;
 	    }
 }
