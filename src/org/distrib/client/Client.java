@@ -16,7 +16,7 @@ public class Client extends Socket {
 	}
 	
 	
-	public static synchronized void main(String[] args) throws UnknownHostException, IOException{
+	public static void main(String[] args) throws UnknownHostException, IOException{
 		Client c = new Client("127.0.0.1", 4444);
 		c.sendMessage("insert, Cafo, 1\ninsert, Cafo, 15\n");
 		c.close();

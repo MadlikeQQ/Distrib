@@ -79,7 +79,7 @@ public class Server extends ServerSocket {
 		return 0;
 	}
 	//main loop server listens for messages
-	public void main(String[] args) throws IOException{
+	public static void main(String[] args) throws IOException{
 		Server s = new Server("iuef877wieu", 4444);
 
 		while(true)
@@ -92,9 +92,9 @@ public class Server extends ServerSocket {
 				while( (command = in.readLine()) != null ){
 					String operation = command.substring(0, command.indexOf(','));
 					String operands = command.substring(command.indexOf(',') + 1, command.length() ).trim();
-					//System.out.println(command);
-					//System.out.println(operation);
-					//System.out.println(operands);
+					System.out.println(command);
+					System.out.println(operation);
+					System.out.println(operands);
 					int i, comp ;
 					String key, value;
 					switch (operation){
@@ -102,10 +102,10 @@ public class Server extends ServerSocket {
 						i = operands.indexOf(',');
 						key = operands.substring(0, i) ;
 						value = operands.substring(i+2,operands.length() - 1 );
-						comp = compareKeys(s.myId,key) ;
+						comp = s.compareKeys(s.myId,key) ;
 						if ( comp == 1 || comp == 0)
 						{
-							if( compareKeys(s.previous.a, key) == -1 ){
+							if( s.compareKeys(s.previous.a, key) == -1 ){
 								s.insert(key,value);
 							}
 							else {
@@ -118,10 +118,10 @@ public class Server extends ServerSocket {
 						break;
 					case "delete":
 						key = operands;
-						comp = compareKeys(s.myId,key) ;
+						comp = s.compareKeys(s.myId,key) ;
 						if ( comp == 1 || comp == 0)
 						{
-							if( compareKeys(s.previous.a, key) == -1 ){
+							if( s.compareKeys(s.previous.a, key) == -1 ){
 								s.delete(key);
 							}
 							else {
@@ -134,7 +134,7 @@ public class Server extends ServerSocket {
 						break;
 					case "query":
 						key = operands;
-						comp = compareKeys(s.myId,key) ;
+						comp = s.compareKeys(s.myId,key) ;
 						if(key.equals("*")){
 							//counter++
 							//if counter < totalProcesses
@@ -145,7 +145,7 @@ public class Server extends ServerSocket {
 						}
 						if ( comp == 1 || comp == 0)
 						{
-							if( compareKeys(s.previous.a, key) == -1 ){
+							if( s.compareKeys(s.previous.a, key) == -1 ){
 								s.query(key);
 							}
 							else {
