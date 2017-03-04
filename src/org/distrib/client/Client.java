@@ -1,25 +1,56 @@
 package org.distrib.client;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-public class Client extends Socket {
-	public Client(String serverAddress, int port) throws UnknownHostException, IOException{
-		super(serverAddress, port);
-	}
+public class Client extends Thread implements Runnable {
+	private boolean startedStarQuery = false;
+	private String message = null;
+	private Socket socket = null;
+	private OutputStream out = null;
+	private int port ;
+	private String serverAddress ;
 	
+	
+	public Client(String serverAddress, int port, String message){
+		//super(serverAddress, port);
+		this.message = message;
+		this.port    = port;
+		this.serverAddress = serverAddress;
+	}
 	
 	public void sendMessage(String message) throws IOException{
-		this.getOutputStream().flush();
-		this.getOutputStream().write(message.getBytes());
+		socket.getOutputStream().flush();
+		socket.getOutputStream().write(message.getBytes());
+		//if message = query * set startedStar = true;
 	}
 	
-	
-	public static void main(String[] args) throws UnknownHostException, IOException{
-		Client c = new Client("127.0.0.1", 4444);
-		c.sendMessage("insert, Cafo, 1\ninsert, Cafo, 15\n");
-		c.close();
-		//System.exit(0);
+	public void run (){
+		try {
+			socket = new Socket();
+			socket.connect(new InetSocketAddress(serverAddress,port));
+			out = socket.getOutputStream();
+			out.flush();
+			out.write(message.getBytes());
+		} 
+		catch (IOException e) {
+		}
+		finally {
+			try {
+				if(out!=null)
+					out.close();
+				if(socket!=null)
+					socket.close();	
+			} 
+			catch (IOException e) {
+			}
+		}
 	}
 }
