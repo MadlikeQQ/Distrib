@@ -23,11 +23,11 @@ import org.distrib.emulator.Emulator;
 public class Server extends Thread implements Runnable {
 
 	public String myId;
+	public boolean coord;
 	
-	
-	private static final int N = 1024;
+	private static final int N = 2048;
 	private static final int MIN_POOL_SIZE = 1;
-	private static final int MAX_POOL_SIZE = 30;
+	private static final int MAX_POOL_SIZE = 100;
 	private static final int DEFAULT_ALIVE_TIME = 60000;
 	
 	private HashMap<String,String> mySet = null;
@@ -35,7 +35,7 @@ public class Server extends Thread implements Runnable {
 	private Tuple<String,Integer> previous = null;
 	private MessageDigest shaGen;
 	private int port = 0;
-	private Emulator parent = null;
+	public Emulator parent = null;
 	private ThreadPoolExecutor workerThreadPool;
 	private boolean hasToRun = true;
 	private boolean running = false;
@@ -44,12 +44,13 @@ public class Server extends Thread implements Runnable {
 	
 	
 	
-	public Server(String ServerId, int port, Emulator parent ) throws IOException{
+	public Server(String ServerId, int port, Emulator parent) throws IOException{
 		//super(port);
 		this.myId = ServerId;		
 		this.mySet = new HashMap<String,String>();
 		this.port = port;
 		this.parent = parent;
+		this.coord = false;
 		
 		/*
 		 try {
@@ -108,7 +109,7 @@ public class Server extends Thread implements Runnable {
 	public int getLocalPort() {return port;}
 	
 	public void insert(String key, String value){
-		System.out.println("inserted");
+		System.out.println("inserted key " + key);
 		if(mySet.containsKey(key)){
 			String oldval = mySet.get(key);
 			//update existing value
@@ -117,8 +118,10 @@ public class Server extends Thread implements Runnable {
 		else{
 			mySet.put(key, value);
 		}
+		System.out.println("Node with Id " + myId + " has the set: " + mySet);
 	}
 	public void delete(String key){
+		System.out.println("Node with Id " + myId  + " to remove key " + key);
 		mySet.remove(key);
 	}
 	
@@ -140,8 +143,47 @@ public class Server extends Thread implements Runnable {
 		this.previous = new Tuple<String,Integer>(previous,prev_port);
 	}
 	
-	public void join (String previous){}
-	public void depart (String id){}
+	public void join (String id) throws IOException{
+		int port = parent.maxport+1;
+		Server node = new Server(id,port,parent);
+		System.out.println("Coord with port"+ this.port + " in join for node with port "+ port +" and id " +id );
+		int i;
+		System.out.println("Size before join= "+parent.nodes.size());
+		for(i=0; i<parent.nodes.size(); i++){
+			if (Key.compare(parent.nodes.get(i).myId,id)==-1){
+				parent.maxport=port;
+				node.setNeighbors(parent.nodes.get(i-1).myId, parent.nodes.get(i-1).port, parent.nodes.get(i).myId, parent.nodes.get(i).port);
+				parent.nodes.add(i,node);
+				System.out.println("Size after join= "+parent.nodes.size());
+				return;
+				//2 methods for redistribution of keys: 1 for previous and 1 for next
+			}
+			else if(i==0 && Key.compare(parent.nodes.get(i).myId,id)==1){
+				System.out.println("Join to the beginning");
+				parent.maxport=port;
+				//node.setNeighbors(parent.nodes.get(i-1).myId, parent.nodes.get(i-1).port, parent.nodes.get(i).myId, parent.nodes.get(i).port);
+				parent.nodes.add(0,node);
+				System.out.println("Size after join= "+parent.nodes.size());
+				return;
+			}
+		}
+		parent.nodes.add(node);
+	}
+	
+	public void depart (String id){
+		
+		int i;
+		for(i=0; i<parent.nodes.size(); i++){
+			System.out.println("Id1: "+parent.nodes.get(i).myId + " Id2 "+ id);
+			if (parent.nodes.get(i).myId.equals(id)){
+				System.out.println("Coord with port"+ port + " in depart for node with port "+ parent.nodes.get(i).port);
+					//parent.nodes.get(i-1).next=parent.nodes.get(i).next;
+					//parent.nodes.get(i).previous=parent.nodes.get(i).previous;
+					parent.nodes.remove(i);
+					//1 methods for redistribution: next gets all keys
+			}
+		}
+	}
 	
 	private synchronized void incCounter (){
 		parent.counter++;
@@ -221,7 +263,7 @@ public class Server extends Thread implements Runnable {
 								insert(key,value);
 							}
 							else {
-								new Thread( new Client("127.0.0.1", previous.b, command)).start();
+								new Thread( new Client("127.0.0.1", next.b, command)).start();
 								//send insert command to previous 
 							}
 						}
@@ -231,7 +273,8 @@ public class Server extends Thread implements Runnable {
 						}
 						break;
 					case "delete":
-						key = operands;
+						i = operands.indexOf(',');
+						key = operands.substring(0, i) ;
 						keySHA = Key.generate(key, N);
 						comp = Key.compare(myId,keySHA) ;
 						if ( comp == 1 || comp == 0)
@@ -240,10 +283,12 @@ public class Server extends Thread implements Runnable {
 								delete(key);
 							}
 							else {
+								new Thread( new Client("127.0.0.1", next.b, command)).start();
 								//send delete command to previous 
 							}
 						}
 						else if (comp == -1) {
+							new Thread( new Client("127.0.0.1", next.b, command)).start();
 							//send delete to next
 						}
 						break;
@@ -257,7 +302,8 @@ public class Server extends Thread implements Runnable {
 						if(key.equals("*")){
 							incCounter();
 							if(parent.counter <= parent.NUM_NODES) {
-								query(key);
+								ArrayList<Tuple<String,String>> result = new ArrayList<Tuple<String,String>>();
+								result = query(key);
 								//send message to next
 								new Thread( new Client("127.0.0.1", next.b, command)).start();
 								//send answer to first client
@@ -283,7 +329,28 @@ public class Server extends Thread implements Runnable {
 						break;
 					case "show":
 						System.out.println("show");
-						System.out.println(mySet);
+						for(int k=0; k < parent.nodes.size(); k++){
+				    		System.out.println("Node: " + parent.nodes.get(k).myId+" with port: "+ parent.nodes.get(k).getLocalPort());
+				    	}
+						break;
+					case "join":
+						if (coord ==true){
+							System.out.println("Into join");
+							i = operands.indexOf(',');
+							String id = operands.substring(i+1,operands.length());
+							keySHA = Key.generate(id, N);
+							join(keySHA);
+						}
+						break;
+					case "depart":
+						if (coord ==true){
+							System.out.println("Into depart");
+							i = operands.indexOf(',');
+							String id = operands.substring(i+1,operands.length());
+							System.out.println("'"+id+"'");
+							keySHA = Key.generate(id, N);
+							depart(keySHA);
+						}
 						break;
 					}
 

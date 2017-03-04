@@ -29,6 +29,7 @@ public class Client extends Thread implements Runnable {
 	public void sendMessage(String message) throws IOException{
 		socket.getOutputStream().flush();
 		socket.getOutputStream().write(message.getBytes());
+		socket.close();
 		//if message = query * set startedStar = true;
 	}
 	
