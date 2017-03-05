@@ -19,6 +19,7 @@ import java.util.concurrent.CyclicBarrier;
 
 import org.distrib.client.Client;
 import org.distrib.key.Key;
+import org.distrib.message.Request;
 import org.distrib.server.Server;
 
 
@@ -29,7 +30,7 @@ public class Emulator {
 	public ArrayList<Server> nodes;
 	private Client[] clients;
 	public volatile int counter = 0;
-	private static final int N = 2048;
+	public final int N=1048576;
 	public int maxport=4444;
 	public int coord_port;
 	
@@ -100,8 +101,9 @@ public class Emulator {
 				m = "insert, "+line;
 			else
 				m = "delete, "+line;
-			
-			new Thread(new Client("127.0.0.1",i,m)).start();
+			Request r = new Request(m);
+			r.setSource(i);
+			new Thread(new Client("127.0.0.1",i,r)).start();
 			
 			//s.getOutputStream().flush();
 			//s.getOutputStream().write(m.getBytes());
@@ -115,8 +117,9 @@ public class Emulator {
 			
 			j++;
 		}
-
-		new Thread( new Client("127.0.0.1", i,"query, *, "+i)).start();
+		//Request p = new Request("query, *");
+		//p.setSource(i);
+		//new Thread( new Client("127.0.0.1", i,p)).start();
 		
 		for(int k=0; k < nodes.size(); k++){
     		System.out.println("Node: " + nodes.get(k).myId+" with port: "+ nodes.get(k).getLocalPort());
@@ -125,10 +128,23 @@ public class Emulator {
 	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
-	    	Socket sct = new Socket("127.0.0.1",coord_port);
-	    	sct.getOutputStream().flush();
-	    	sct.getOutputStream().write(input.getBytes());
-	    	sct.close();
+	    	//Socket sct = new Socket("127.0.0.1",coord_port);
+	    	//sct.getOutputStream().flush();
+	    	//sct.getOutputStream().write(input.getBytes());
+	    	//sct.close();
+	    	Request tmp = new Request(input);
+	    	
+	    	if(tmp.getOperation().equals("join") || tmp.getOperation().equals("depart")){
+	    		System.out.println("join");
+	    		new Thread( new Client("127.0.0.1", coord_port,tmp)).start();
+	    	}
+	    	else{
+	    		i = (int) (Math.random() * (maxport)) ;
+	    		i = Math.max(i, 4444);
+	    		tmp.setSource(i);
+	    		new Thread( new Client("127.0.0.1", i,tmp)).start();
+	    	}
+	    		
 	    }
 		
 	}

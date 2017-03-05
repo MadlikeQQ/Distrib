@@ -1,6 +1,8 @@
 package org.distrib.server;
 
-public class Tuple<A,B> {
+import java.io.Serializable;
+
+public class Tuple<A,B> implements Serializable {
 	 public final A a; 
 	    public final B b; 
 	    public Tuple(A a, B b) { 
