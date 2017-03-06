@@ -12,14 +12,17 @@ public class Key {
 		}
 		
 		
-		public static int compare(String k1, String k2){
-			float key1 = Float.parseFloat(k1);
-			float key2 = Float.parseFloat(k2);
+		public static int compare(String key1, String key2){
+			//float key1 = Float.parseFloat(k1);
+			//float key2 = Float.parseFloat(k2);
+			char[] k1 = key1.toCharArray();
+			char[] k2 = key2.toCharArray();
 			
-			if(key1 > key2) return 1;
-			else if(key1 < key2) return -1;
-			else return 0;
-		
+			for (int i=0; i< k1.length; i++){
+				if(k1[i] > k2[i]) return 1;
+			else if(k1[i] < k2[i]) return -1;
+			}
+			return 0;
 		}
 		
 		public static String sha1(String s){

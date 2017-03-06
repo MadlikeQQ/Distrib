@@ -2,6 +2,8 @@ package org.distrib.emulator;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -57,7 +59,7 @@ public class Emulator {
 			String id = Integer.toString(i);
 			//md.update(id.getBytes());
 			//nodes[i] = new Server(md.digest().toString(), port,this);
-			Server node = new Server(Key.generate(id, N),port,this);
+			Server node = new Server(Key.sha1(id),port,this);
 			nodes.add(node);
 			port++;
 			maxport=port;
@@ -66,6 +68,7 @@ public class Emulator {
 		Collections.sort(nodes,new NodeComparator());
 		
 		for (i = 0 ; i < NUM_NODES ; i++){
+			//Number of current nodes in list
 			
 			if(i==0){
 				nodes.get(i).setNeighbors(nodes.get(NUM_NODES-1).myId, nodes.get(NUM_NODES-1).getLocalPort(), nodes.get(i+1).myId, nodes.get(i+1).getLocalPort());
@@ -122,7 +125,7 @@ public class Emulator {
 		//new Thread( new Client("127.0.0.1", i,p)).start();
 		
 		for(int k=0; k < nodes.size(); k++){
-    		System.out.println("Node: " + nodes.get(k).myId+" with port: "+ nodes.get(k).getLocalPort());
+    		System.out.println("Node: " + toHex(nodes.get(k).myId)+" with port: "+ nodes.get(k).getLocalPort());
     	}
 		//System.exit(0); to see if shutdown hook works
 	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -149,6 +152,15 @@ public class Emulator {
 		
 	}
 
+	public String toHex(String arg) {
+	    try {
+			return String.format("%040x", new BigInteger(1, arg.getBytes("UTF-8")));
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return arg;
+	}
 	
 	public static void main(String[] args) throws IOException
 	{

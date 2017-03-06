@@ -8,6 +8,7 @@ public class Request extends Message implements Serializable {
 	private String operation;
 	private String operands;
 	
+	
 	public Request() {
 		super();
 		//setConversationId(getNextConversationId());

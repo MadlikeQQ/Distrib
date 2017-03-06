@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import org.distrib.key.*;
 import org.distrib.message.Request;
 import org.distrib.message.Response;
+import org.distrib.message.XRequest;
 import org.distrib.client.*;
 import org.distrib.emulator.Emulator;
 
@@ -204,7 +205,6 @@ public class Server extends Thread implements Runnable {
 	}
 	
 	public void depart (String id){
-		
 		int i;
 		for(i=0; i<parent.nodes.size(); i++){
 			if (parent.nodes.get(i).myId.equals(id)){
@@ -272,6 +272,8 @@ public class Server extends Thread implements Runnable {
 		running = false;
 	}
 	
+	
+	
 	private class DoWork implements Runnable {
 		
 		Socket socket = null;
@@ -293,7 +295,8 @@ public class Server extends Thread implements Runnable {
 				key = operands.substring(1, i) ;
 				value = operands.substring(i+2,operands.length() );
 				//comp = compareKeys(myId,key) ;
-				keySHA = Key.generate(key, N);
+			//	keySHA = Key.generate(key, N);
+				keySHA = Key.sha1(key);
 				comp = Key.compare(myId, keySHA);
 				if ( comp == 1 || comp == 0)
 				{
@@ -314,13 +317,20 @@ public class Server extends Thread implements Runnable {
 				}
 				else if (comp == -1) {
 					//send insert to next
-					new Thread( new Client("127.0.0.1", next.b, req)).start();
+					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
+						new Thread( new Client("127.0.0.1", next.b, req)).start();
+					else{
+						XRequest xreq = (XRequest)req;
+						xreq.setType("mandatory");
+						new Thread( new Client("127.0.0.1", next.b, xreq)).start();
+					}
 				}
 				break;
 			case "delete":
 				i = operands.indexOf(',');
 				key = operands.substring(1, i) ;
-				keySHA = Key.generate(key, N);
+			//	keySHA = Key.generate(key, N);
+				keySHA = Key.sha1(key);
 				comp = Key.compare(myId,keySHA) ;
 				if ( comp == 1 || comp == 0)
 				{
@@ -341,14 +351,21 @@ public class Server extends Thread implements Runnable {
 					}
 				}
 				else if (comp == -1) {
-					new Thread( new Client("127.0.0.1", next.b, req)).start();
+					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
+						new Thread( new Client("127.0.0.1", next.b, req)).start();
+					else{
+						XRequest xreq = (XRequest)req;
+						xreq.setType("mandatory");
+						new Thread( new Client("127.0.0.1", next.b, xreq)).start();
+					}
 					//send delete to next
 				}
 				break;
 			case "query":
 				key = operands.split(" ")[1] ;
 				//comp = compareKeys(myId,key) ;
-				keySHA = Key.generate(key, N);
+				//keySHA = Key.generate(key, N);
+				keySHA = Key.sha1(key);
 				comp = Key.compare(myId, keySHA);
 				if(key.equals("*")){
 					incCounter();
@@ -388,7 +405,13 @@ public class Server extends Thread implements Runnable {
 				}
 				//Send to next node
 				else{
-					new Thread( new Client("127.0.0.1", next.b, req)).start();
+					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
+						new Thread( new Client("127.0.0.1", next.b, req)).start();
+					else{
+						XRequest xreq = (XRequest)req;
+						xreq.setType("mandatory");
+						new Thread( new Client("127.0.0.1", next.b, xreq)).start();
+					}
 				}
 				break;
 			case "show":
@@ -401,7 +424,8 @@ public class Server extends Thread implements Runnable {
 				if (coord ==true){
 					//i = operands.indexOf(',');
 					String id = operands.split(" ")[1] ;
-					keySHA = Key.generate(id, N);
+			//		keySHA = Key.generate(id, N);
+					keySHA = Key.sha1(id);
 					join(keySHA);
 				}
 				break;
@@ -409,14 +433,73 @@ public class Server extends Thread implements Runnable {
 				if (coord ==true){
 					//i = operands.indexOf(',');
 					String id = operands.split(" ")[1] ;
-					keySHA = Key.generate(id, N);
+				//	System.out.println("Depart of node"+id+"blalblaldfl");
+					keySHA = Key.sha1(id);
+			//		System.out.println("With sha "+keySHA);
 					depart(keySHA);
 				}
 				break;
 			}
 		}
 		
-		
+		public void HandleXRequests(XRequest xreq){
+			int i, src ;
+			String key, value, keySHA;
+			String operation = xreq.getOperation();
+			String operands = xreq.getOperands();
+			String type = xreq.getType();
+			Response response=null;
+			if(type.equals("mandatory")){
+				switch (operation){
+				case "insert":
+					//System.out.println("Received insert");
+					i = operands.indexOf(',');
+					key = operands.substring(1, i) ;
+					value = operands.substring(i+2,operands.length() );
+					//comp = compareKeys(myId,key) ;
+					//	keySHA = Key.generate(key, N);
+					keySHA = Key.sha1(key);
+					Tuple<String,String> ires = insert(key,value);
+					src = xreq.getSource();
+					response = new Response("insert",ires);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src, response)).start();
+					break;
+				case "delete":
+					i = operands.indexOf(',');
+					key = operands.substring(1, i) ;
+					//	keySHA = Key.generate(key, N);
+					keySHA = Key.sha1(key);
+					String dres = delete(key);
+					src = xreq.getSource();
+					response = new Response("delete",dres);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					System.out.println("Sendin response to node "+ src+ "for key " + dres);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src, response)).start();
+					break;
+				case "query":
+					key = operands.split(" ")[1] ;
+					//comp = compareKeys(myId,key) ;
+					//keySHA = Key.generate(key, N);
+					keySHA = Key.sha1(key);
+					ArrayList<Tuple<String,String>> qres = new ArrayList<Tuple<String,String>>();
+					qres = query(key);
+					src = xreq.getSource();
+					response = new Response("query",qres);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src,response)).start();
+				}
+		}	
+	}
 		
 		private void HandleResponse(Response response){
 			String operation = response.getOperation();
@@ -458,6 +541,9 @@ public class Server extends Thread implements Runnable {
 				}
 				else if(messageObj instanceof Response){
 					HandleResponse((Response) messageObj);
+				}
+				else{
+					HandleXRequests((XRequest)messageObj);
 				}
 
 			//	in = new BufferedReader(inS);
