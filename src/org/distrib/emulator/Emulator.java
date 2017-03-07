@@ -134,7 +134,6 @@ public class Emulator {
 	    	Request tmp = new Request(input);
 	    	
 	    	if(tmp.getOperation().equals("join") || tmp.getOperation().equals("depart")){
-	    		System.out.println("join");
 	    		new Thread( new Client("127.0.0.1", coord_port,tmp)).start();
 	    	}
 	    	else{

@@ -1,7 +1,10 @@
 package org.distrib.key;
 
+import java.nio.charset.StandardCharsets;
+import java.security.DigestException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class Key {
 		public static String generate(String name, int space) {
@@ -25,34 +28,47 @@ public class Key {
 			return 0;
 		}
 		
+		public static boolean between(String key, String from, String to ){
+			if(compare(from, to) ==  1){//if from > to
+				return (compare(key, from) == 1) || ( compare(key, to) == -1 || compare(key, to) == 0);
+			}
+			else if (compare(from, to ) == -1) {
+				return (compare(key, from ) == 1) && ( compare(key, to) == -1 || compare(key, to) == 0);
+			}
+			else return true;
+		}
+		
 		public static String sha1(String s){
 			String sha1 = null;
 			try {
 				MessageDigest md = MessageDigest.getInstance("SHA1");
-				byte[] result = md.digest(s.getBytes());
-				StringBuffer sb = new StringBuffer();
-				for (int i = 0; i < result.length; i++){
-					sb.append(Integer.toString(result[i],2).substring(1));
-			    	 // sb.append(Integer.toHexString(0xFF & result[i]));
-
-				}
-				sha1 = sb.toString();
+				byte[] result = new byte[40];
+				Arrays.fill(result,(byte)0);
+				md.update(s.getBytes());
+				//System.out.printf("Digest length %d" ,md.getDigestLength());
+				md.digest(result, 40 - md.getDigestLength()  ,md.getDigestLength());
+				
+				sha1 = new String(result, StandardCharsets.ISO_8859_1);
+				//System.out.println("Sha length = " + sha1.getBytes().length);
 			} catch (NoSuchAlgorithmException e){
+				e.printStackTrace();
+			} catch (DigestException e) {
+				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			return sha1;
 		}
 		
 		public static String toHex(String s){
-			String result = "", c;
-			int j;
-			
-			for (int i=0; i<s.length() - 4; i+=5){
-				j = Integer.parseInt(s.substring(i, i+4),2);
-				c =  Integer.toString(j,16);
-				result += c;
-				
-			}
-			return result;
+			return convertByteArrayToHexString(s.getBytes());
+		}
+		
+		private static String convertByteArrayToHexString(byte[] arrayBytes) {
+		    StringBuffer stringBuffer = new StringBuffer();
+		    for (int i = 0; i < arrayBytes.length; i++) {
+		        stringBuffer.append(Integer.toString((arrayBytes[i] & 0xff) + 0x100, 32)
+		                .substring(1));
+		    }
+		    return stringBuffer.toString();
 		}
 }
