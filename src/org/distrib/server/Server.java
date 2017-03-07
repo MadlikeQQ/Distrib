@@ -293,36 +293,22 @@ public class Server extends Thread implements Runnable {
 			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
 				comp = Key.compare(myId, keySHA);
-				if ( comp == 1 || comp == 0)
-				{
-					if( Key.compare(previous.a, keySHA) == -1 ){
-						System.out.println("Into insert for key " + key + " and val " + value);
-						Tuple<String,String> result = insert(key,value);
-						int src = req.getSource();
-						Response response = new Response("insert",result);
-						response.setDestination(src);
-						response.setSource(port);
-						response.setNode(myId);
-						//send response to client
-						new Thread(new Client("127.0.0.1", src, response)).start();
-					}
-					else {
-				//		System.out.println("Into else for insertion of key "+ key);
-						new Thread( new Client("127.0.0.1", next.b, req)).start();
-						//send insert command to previous 
-					}
+
+				if(Key.between(keySHA, previous.a, myId)){
+					//System.out.printf("inserting key %s in node %s", Key.toHex(keySHA), Key.toHex(myId));
+					Tuple<String,String> result = insert(key,value);
+					int src = req.getSource();
+					Response response = new Response("insert",result);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src, response)).start();
 				}
-				else if (comp == -1) {
-				//	System.out.println("Into else if for insertion of key "+ key);
-					//send insert to next
-					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
-						new Thread( new Client("127.0.0.1", next.b, req)).start();
-					else{
-						XRequest xreq = (XRequest)req;
-						xreq.setType("mandatory");
-						new Thread( new Client("127.0.0.1", next.b, xreq)).start();
-					}
+				else {
+					new Thread( new Client("127.0.0.1", next.b, req)).start();
 				}
+				
 				break;
 			case "delete":
 				key = operands.substring(1, operands.length()) ;
@@ -330,37 +316,23 @@ public class Server extends Thread implements Runnable {
 			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
 				comp = Key.compare(myId,keySHA) ;
-				if ( comp == 1 || comp == 0)
-				{
-					if( Key.compare(previous.a, keySHA) == -1 ){
-					    String result = delete(key);
-						int src = req.getSource();
-						Response response = new Response("delete",result);
-						response.setDestination(src);
-						response.setSource(port);
-						response.setNode(myId);
-						//System.out.println("Sendin response to node "+ src+ "for key " + result);
-						//send response to client
-						new Thread(new Client("127.0.0.1", src, response)).start();
-					}
-					else {
-						new Thread( new Client("127.0.0.1", next.b, req)).start();
-						//send delete command to previous 
-					}
+				if(Key.between(keySHA, previous.a, myId)){
+					String result = delete(key);
+					int src = req.getSource();
+					Response response = new Response("delete",result);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					//System.out.println("Sendin response to node "+ src+ "for key " + result);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src, response)).start();
 				}
-				else if (comp == -1) {
-					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
-						new Thread( new Client("127.0.0.1", next.b, req)).start();
-					else{
-						XRequest xreq = (XRequest)req;
-						xreq.setType("mandatory");
-						new Thread( new Client("127.0.0.1", next.b, xreq)).start();
-					}
-					//send delete to next
+				else {
+					new Thread( new Client("127.0.0.1", next.b, req)).start();
 				}
 				break;
 			case "query":
-				key = operands.split(" ")[1] ;
+				key =  operands.substring(1, operands.length()) ;
 				//comp = compareKeys(myId,key) ;
 				//keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
@@ -387,31 +359,20 @@ public class Server extends Thread implements Runnable {
 						resetCounter();
 					break;
 				}
-				if ( comp == 1 || comp == 0)
-				{
-					System.out.println("Normal query");
-					if( Key.compare(previous.a, keySHA) == -1 ){
-						System.out.println("I have key " + myId);
-						ArrayList<Tuple<String,String>> result = new ArrayList<Tuple<String,String>>();
-						result = query(key);
-						int src = req.getSource();
-						Response response = new Response("query",result);
-						response.setDestination(src);
-						response.setSource(port);
-						response.setNode(myId);
-						//send response to client
-						new Thread(new Client("127.0.0.1", src,response)).start();
-					}
+				if (Key.between(keySHA, previous.a, myId)){
+					ArrayList<Tuple<String,String>> result = new ArrayList<Tuple<String,String>>();
+					result = query(key);
+					int src = req.getSource();
+					Response response = new Response("query",result);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src,response)).start();
 				}
-				//Send to next node
-				else{
-					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
-						new Thread( new Client("127.0.0.1", next.b, req)).start();
-					else{
-						XRequest xreq = (XRequest)req;
-						xreq.setType("mandatory");
-						new Thread( new Client("127.0.0.1", next.b, xreq)).start();
-					}
+				else {
+					new Thread( new Client("127.0.0.1", next.b, req)).start();
+					//send delete command to previous 
 				}
 				break;
 			case "show":
