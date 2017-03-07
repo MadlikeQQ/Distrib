@@ -1,4 +1,4 @@
-
+import org.distrib.message.Request;
 
 public class XRequest extends Request {
 	

@@ -290,10 +290,10 @@ public class Server extends Thread implements Runnable {
 			String operands = req.getOperands();
 			switch (operation){
 			case "insert":
-				//System.out.println("Received insert");
 				i = operands.indexOf(',');
 				key = operands.substring(1, i) ;
 				value = operands.substring(i+2,operands.length() );
+				//System.out.println("Received insert <" + key + "," + value + ">");
 				//comp = compareKeys(myId,key) ;
 			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
@@ -327,8 +327,8 @@ public class Server extends Thread implements Runnable {
 				}
 				break;
 			case "delete":
-				i = operands.indexOf(',');
-				key = operands.substring(1, i) ;
+				key = operands.substring(1, operands.length()) ;
+				//System.out.println("received delete command for: " + key);
 			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
 				comp = Key.compare(myId,keySHA) ;
@@ -341,7 +341,7 @@ public class Server extends Thread implements Runnable {
 						response.setDestination(src);
 						response.setSource(port);
 						response.setNode(myId);
-						System.out.println("Sendin response to node "+ src+ "for key " + result);
+						//System.out.println("Sendin response to node "+ src+ "for key " + result);
 						//send response to client
 						new Thread(new Client("127.0.0.1", src, response)).start();
 					}
@@ -391,7 +391,9 @@ public class Server extends Thread implements Runnable {
 				}
 				if ( comp == 1 || comp == 0)
 				{
+					System.out.println("Normal query");
 					if( Key.compare(previous.a, keySHA) == -1 ){
+						System.out.println("I have key " + myId);
 						ArrayList<Tuple<String,String>> result = new ArrayList<Tuple<String,String>>();
 						result = query(key);
 						int src = req.getSource();
@@ -417,7 +419,7 @@ public class Server extends Thread implements Runnable {
 			case "show":
 				System.out.println("show");
 				for(int k=0; k < parent.nodes.size(); k++){
-		    		System.out.println("Node: " + parent.nodes.get(k).myId+" with port: "+ parent.nodes.get(k).getLocalPort());
+		    		System.out.println("Node: " + Key.toHex(parent.nodes.get(k).myId)+" with port: "+ parent.nodes.get(k).getLocalPort());
 		    	}
 				break;
 			case "join":
@@ -504,24 +506,29 @@ public class Server extends Thread implements Runnable {
 		private void HandleResponse(Response response){
 			String operation = response.getOperation();
 			Object payload = response.getPayload();
-			
+			System.out.println("*****Reponse******");
+			System.out.println("From: " + Key.toHex(response.getNode()));
+			System.out.println("To  : " + Key.toHex(myId));
+			System.out.println("Message: ");
 			switch (operation){
 			case "query":
 				ArrayList<Tuple<String,String>> pld = (ArrayList<Tuple<String,String>>)payload;
-				System.out.println("Data from node " + response.getNode()+ ":");
+				//System.out.println("Data from node " + response.getNode()+ ":");
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b);
 				}
+				
 				break;
 			case "insert":
 				Tuple<String,String> insrt = (Tuple<String,String>)payload;
-				System.out.println("Insert in node "+ response.getNode()+ " data: " + insrt.a + "," + insrt.b);
+				System.out.println("Inserted <" + insrt.a + "," + insrt.b + ">");
 				break;
 			case "delete":
 				String dlt = payload.toString();
-				System.out.println("Delete key: " + dlt +" in node "+ response.getNode());
+				System.out.println("Deleted key "+ dlt  );
 			break;
 			}		
+			System.out.println();
 		}
 		
 /*********************************** End Handle Requests/Responses ***************************/		

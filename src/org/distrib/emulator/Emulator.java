@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.distrib.client.Client;
 import org.distrib.key.Key;
@@ -88,7 +89,7 @@ public class Emulator {
 		
 		int j = 1;
 		Charset charset = Charset.forName("US-ASCII");
-		Path file =  Paths.get("insert.txt");
+		Path file =  Paths.get("test.txt");
 		BufferedReader reader = Files.newBufferedReader(file,charset);
 		String line;
 		while( (line=reader.readLine()) != null && j <=10)   {
@@ -99,12 +100,8 @@ public class Emulator {
 			 */
 			///*
 			//Socket s = new Socket("127.0.0.1", i);
-			String m;
-			if (j % 2 ==0) 
-				m = "insert, "+line;
-			else
-				m = "delete, "+line;
-			Request r = new Request(m);
+			
+			Request r = new Request(line);
 			r.setSource(i);
 			new Thread(new Client("127.0.0.1",i,r)).start();
 			
@@ -123,9 +120,8 @@ public class Emulator {
 		//Request p = new Request("query, *");
 		//p.setSource(i);
 		//new Thread( new Client("127.0.0.1", i,p)).start();
-		
 		for(int k=0; k < nodes.size(); k++){
-    		System.out.println("Node: " + toHex(nodes.get(k).myId)+" with port: "+ nodes.get(k).getLocalPort());
+    		System.out.println("Node: " + Key.toHex((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
 		//System.exit(0); to see if shutdown hook works
 	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -142,8 +138,7 @@ public class Emulator {
 	    		new Thread( new Client("127.0.0.1", coord_port,tmp)).start();
 	    	}
 	    	else{
-	    		i = (int) (Math.random() * (maxport)) ;
-	    		i = Math.max(i, 4444);
+	    		i = ThreadLocalRandom.current().nextInt(4444, maxport  + 1);
 	    		tmp.setSource(i);
 	    		new Thread( new Client("127.0.0.1", i,tmp)).start();
 	    	}
@@ -152,16 +147,6 @@ public class Emulator {
 		
 	}
 
-	public String toHex(String arg) {
-	    try {
-			return String.format("%040x", new BigInteger(1, arg.getBytes("UTF-8")));
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return arg;
-	}
-	
 	public static void main(String[] args) throws IOException
 	{
 		Emulator em = new Emulator();

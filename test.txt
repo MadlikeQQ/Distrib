@@ -1,0 +1,10 @@
+insert, Like a Rolling Stone, 1
+delete, Satisfaction
+insert, Imagine, 3
+delete, What's Going On
+insert, Respect, 5
+delete, Good Vibrations
+insert, Good Vibrations, 6
+delete, Johnny B. Goode
+insert, Hey Jude, 8
+delete, Smells Like Teen Spirit

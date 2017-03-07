@@ -5,8 +5,8 @@ import java.util.SortedMap;
 
 public class Request extends Message implements Serializable {
 	protected static final long serialVersionUID = Message.serialVersionUID + 1L;
-	private String operation;
-	private String operands;
+	private String operation = "";
+	private String operands = "";
 	
 	
 	public Request() {
@@ -21,8 +21,11 @@ public class Request extends Message implements Serializable {
 	}
 	
 	public void setCommand(String command){
-		operation = command.substring(0, command.indexOf(','));
-		operands = command.substring(command.indexOf(',') + 1 , command.length());
+		int i = command.indexOf(',');
+		if(i>0){
+		operation = command.substring(0, i);
+		operands = command.substring(i + 1 , command.length());
+		}
 	}
 	
 	public String getOperation(){

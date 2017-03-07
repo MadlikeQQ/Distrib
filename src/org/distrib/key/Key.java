@@ -33,11 +33,26 @@ public class Key {
 				StringBuffer sb = new StringBuffer();
 				for (int i = 0; i < result.length; i++){
 					sb.append(Integer.toString(result[i],2).substring(1));
+			    	 // sb.append(Integer.toHexString(0xFF & result[i]));
+
 				}
 				sha1 = sb.toString();
 			} catch (NoSuchAlgorithmException e){
 				e.printStackTrace();
 			}
 			return sha1;
+		}
+		
+		public static String toHex(String s){
+			String result = "", c;
+			int j;
+			
+			for (int i=0; i<s.length() - 4; i+=5){
+				j = Integer.parseInt(s.substring(i, i+4),2);
+				c =  Integer.toString(j,16);
+				result += c;
+				
+			}
+			return result;
 		}
 }
