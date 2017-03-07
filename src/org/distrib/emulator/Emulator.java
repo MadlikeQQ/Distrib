@@ -29,13 +29,14 @@ import org.distrib.server.Server;
 public class Emulator {
 	
 	
-	public int NUM_NODES = 10;
+	public static int NUM_NODES = 10;
 	public ArrayList<Server> nodes;
 	private Client[] clients;
 	public volatile int counter = 0;
 	public final int N=1048576;
 	public int maxport=4444;
 	public int coord_port;
+	private int replicas = 3;
 	
 	CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
 	
@@ -60,7 +61,7 @@ public class Emulator {
 			String id = Integer.toString(i);
 			//md.update(id.getBytes());
 			//nodes[i] = new Server(md.digest().toString(), port,this);
-			Server node = new Server(Key.sha1(id),port,this);
+			Server node = new Server(Key.sha1(id),port,this, replicas);
 			nodes.add(node);
 			port++;
 			maxport=port;
