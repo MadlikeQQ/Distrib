@@ -48,6 +48,7 @@ public class Client extends Thread implements Runnable {
 	
 	public void run (){
 		try {
+			// we connect the client-socket with server's port so as to handle the request 
 			socket = new Socket();
 			socket.connect(new InetSocketAddress(serverAddress,port));
 			out = new ObjectOutputStream(socket.getOutputStream());

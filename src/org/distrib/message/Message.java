@@ -8,6 +8,7 @@ public class Message implements Serializable {
 	protected static final long serialVersionUID = 1L;
 	private int source;
 	private int destination;
+	private String id;
 	
 	public Message(){
 		
@@ -30,6 +31,14 @@ public class Message implements Serializable {
 
 	public void setDestination(int destination) {
 		this.destination = destination;
+	}
+	
+	public void setId(String id){
+		this.id=id;
+	}
+	
+	public String getId(){
+		return id;
 	}
 	
 }

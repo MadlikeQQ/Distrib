@@ -14,6 +14,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -150,8 +152,17 @@ public class Server extends Thread implements Runnable {
 		return res;
 	}
 	
+	public ArrayList<Tuple<String,String>> find(String id){
+		ArrayList<Tuple<String,String>> res = new ArrayList<Tuple<String,String>>();
+		mySet.forEach((k,v) -> {if (Key.compare(id, k)!=-1){res.add(new Tuple<String,String>(k,v)); mySet.remove(k);}});
+		return res;
+	}
 	
 /*************************** End commands *********************/	
+	
+	
+	
+/******************* Setting Neighbors ******************/	
 	
 	
 	public void setNeighbors(String previous, int prev_port, String next, int next_port){
@@ -168,6 +179,7 @@ public class Server extends Thread implements Runnable {
 		parent.maxport=port;
 		Server node = new Server(id,port,parent);
 		int i;
+		int sendport = -1;
 		for(i=0; i<parent.nodes.size(); i++){
 			if (Key.compare(parent.nodes.get(i).myId,id)==1){
 				//Set neighbors for node to be inserted
@@ -177,7 +189,6 @@ public class Server extends Thread implements Runnable {
 				parent.nodes.get(i).previous=new Tuple<String,Integer>(id,port);
 				//Add the node to list
 				parent.nodes.add(i,node);
-				return;
 			}
 			//If we must insert to the beginning
 			else if(i==0 && Key.compare(parent.nodes.get(i).myId,id)==1){			
@@ -189,23 +200,40 @@ public class Server extends Thread implements Runnable {
 				parent.nodes.get(0).previous=new Tuple<String,Integer>(id,port);
 				//Insert the new node to head
 				parent.nodes.add(0,node);
-				return;
 			}
 		}
-		int last = parent.nodes.size()-1;
-		//The node must be inserted at end
-		//Set the neighbors for new node
-		node.setNeighbors(parent.nodes.get(last).myId, parent.nodes.get(last).port, parent.nodes.get(0).myId, parent.nodes.get(0).port);
-		//Update the neighbors for the last node of list
-		parent.nodes.get(last).next = new Tuple<String,Integer>(id,port);
-		//Add the node to list
-		parent.nodes.add(last+1,node);
-		
+		if(i!=parent.nodes.size()) sendport = parent.nodes.get(i+1).port;
+		else{
+			int last = parent.nodes.size()-1;
+			//The node must be inserted at end
+			//Set the neighbors for new node
+			node.setNeighbors(parent.nodes.get(last).myId, parent.nodes.get(last).port, parent.nodes.get(0).myId, parent.nodes.get(0).port);
+			//Update the neighbors for the last node of list
+			parent.nodes.get(last).next = new Tuple<String,Integer>(id,port);
+			//Add the node to list
+			parent.nodes.add(last+1,node);
+			// we take the port of next neighbor
+			sendport = parent.nodes.get(0).port;
+		}
 		//2 methods for redistribution of keys: 1 for previous and 1 for next
+		
+		// we want a method only for the next ( the next node must give the objects with key <= id of new node)
+		// cordinator sends a specific request to the "next" node
+		// the next node receive the specific request and sends (response-arraylist) the appropiate objects to previous neighbor (the new node)
+		// the new node receive the specific  response-arraylist and store it to his hashmap
+		String m = "redistribution";
+		Request r = new Request(m);
+		// the next neighbor will read the destination to send the arraylist
+		r.setDestination(port);
+		r.setId(id);
+		new Thread(new Client("127.0.0.1",sendport,r)).start();		
 	}
 	
 	public void depart (String id){
 		int i;
+		int port = -1;
+		int sendport=-1;
+		String localid;
 		for(i=0; i<parent.nodes.size(); i++){
 			if (parent.nodes.get(i).myId.equals(id)){
 				//We must remove the first node from the list
@@ -215,15 +243,24 @@ public class Server extends Thread implements Runnable {
 				//We must remove the last node from the list
 				else if (i == parent.nodes.size()-1){
 					parent.nodes.get(i-1).next=parent.nodes.get(i).next;
-					
 				}
 				//We must remove an intermediate node from the list
 				else{
 					parent.nodes.get(i-1).next=parent.nodes.get(i).next;
-					parent.nodes.get(i).previous=parent.nodes.get(i).previous;
-					
+					parent.nodes.get(i+1).previous=parent.nodes.get(i).previous;
 				}
-				//1 methods for redistribution: next gets all keys
+				port = parent.nodes.get(i+1).port;
+				localid = parent.nodes.get(i+1).myId;
+				sendport = i;
+				String m = "redistribution";
+				Request r = new Request(m);
+				r.setDestination(port);
+				r.setId(localid);
+				new Thread(new Client("127.0.0.1",sendport,r)).start();
+				//1 method for redistribution: next gets all keys
+				// cordinator sends a specific request to the removal node
+				// removal node receive the request and sends response-arraylist his whole hashmap to "next" neighbor
+				// next neighbor receive the specific response-arraylist and store it to his hashmap
 				parent.nodes.remove(i);
 		}
 	}
@@ -310,12 +347,12 @@ public class Server extends Thread implements Runnable {
 						//send response to client
 						new Thread(new Client("127.0.0.1", src, response)).start();
 					}
-					else {
+					else { //routing the request
 						new Thread( new Client("127.0.0.1", next.b, req)).start();
 						//send insert command to previous 
 					}
 				}
-				else if (comp == -1) {
+				else if (comp == -1) { // routing the request
 					//send insert to next
 					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
 						new Thread( new Client("127.0.0.1", next.b, req)).start();
@@ -345,12 +382,12 @@ public class Server extends Thread implements Runnable {
 						//send response to client
 						new Thread(new Client("127.0.0.1", src, response)).start();
 					}
-					else {
+					else { // routing the request
 						new Thread( new Client("127.0.0.1", next.b, req)).start();
 						//send delete command to previous 
 					}
 				}
-				else if (comp == -1) {
+				else if (comp == -1) { // routing the request
 					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
 						new Thread( new Client("127.0.0.1", next.b, req)).start();
 					else{
@@ -439,7 +476,23 @@ public class Server extends Thread implements Runnable {
 					depart(keySHA);
 				}
 				break;
+			
+			case "redistribution":
+				String id = req.getId();
+				int destination = req.getDestination();
+				ArrayList<Tuple<String,String>> result = new ArrayList<Tuple<String,String>>();
+				result = find(id);
+				Response response = new Response("qetobjects",result);
+				response.setDestination(destination);
+				response.setSource(port);
+				response.setNode(myId);
+				new Thread(new Client("127.0.0.1", destination,response)).start();
+				break;
 			}
+			
+			
+			
+			
 		}
 		
 		public void HandleXRequests(XRequest xreq){
@@ -521,6 +574,11 @@ public class Server extends Thread implements Runnable {
 				String dlt = payload.toString();
 				System.out.println("Delete key: " + dlt +" in node "+ response.getNode());
 			break;
+			case "getobjects":
+				ArrayList<Tuple<String,String>> objects = (ArrayList<Tuple<String,String>>)payload;
+				objects.forEach(item->mySet.put(item.a,item.b));
+				
+			
 			}		
 		}
 		

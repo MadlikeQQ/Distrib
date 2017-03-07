@@ -36,7 +36,7 @@ public class Emulator {
 	public int maxport=4444;
 	public int coord_port;
 	
-	CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
+	CountDownLatch startSignal = new CountDownLatch(NUM_NODES); // like a barrier for threads
 	
 	public Emulator ( ) {}
 	
@@ -55,6 +55,7 @@ public class Emulator {
 		nodes = new ArrayList<Server>();
 		clients = new Client[NUM_NODES];
 		int i;
+		// we create the servers
 		for (i = 0 ; i <NUM_NODES; i++ ){
 			String id = Integer.toString(i);
 			//md.update(id.getBytes());
@@ -65,7 +66,10 @@ public class Emulator {
 			maxport=port;
 		}
 		
+		// we sort the servers according to their id
 		Collections.sort(nodes,new NodeComparator());
+		
+		// nodes[0] first node in chord 
 		
 		for (i = 0 ; i < NUM_NODES ; i++){
 			//Number of current nodes in list
@@ -83,6 +87,7 @@ public class Emulator {
 			new Thread(nodes.get(i)).start();
 		}
 		
+		// node with id=0 is the coordinator
 		nodes.get(0).coord=true;
 		coord_port=nodes.get(0).getLocalPort();
 		
@@ -92,6 +97,7 @@ public class Emulator {
 		BufferedReader reader = Files.newBufferedReader(file,charset);
 		String line;
 		while( (line=reader.readLine()) != null && j <=10)   {
+			// we choose a random node from chord
 			i = (int) (Math.random() * (NUM_NODES - 1)) + 4444;
 			//System.out.println("Emulator chose port " + i);
 			/*
