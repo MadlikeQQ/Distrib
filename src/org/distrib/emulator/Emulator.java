@@ -29,7 +29,7 @@ import org.distrib.server.Server;
 public class Emulator {
 	
 	
-	public static final int NUM_NODES = 10;
+	public int NUM_NODES = 10;
 	public ArrayList<Server> nodes;
 	private Client[] clients;
 	public volatile int counter = 0;

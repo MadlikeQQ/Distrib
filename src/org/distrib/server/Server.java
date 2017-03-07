@@ -59,14 +59,7 @@ public class Server extends Thread implements Runnable {
 		this.parent = parent;
 		this.coord = false;
 		
-		/*
-		 try {
-			this.shaGen = MessageDigest.getInstance("SHA-1");
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		*/
+
 	}
 	
 	public synchronized void start() {
@@ -163,6 +156,7 @@ public class Server extends Thread implements Runnable {
 /**************************** Coordinator Commands *************************/	
 	
 	public void join (String id) throws IOException{
+		parent.NUM_NODES++;
 		//Set the new maxport for new nodes
 		int port = parent.maxport+1;
 		parent.maxport=port;
@@ -205,6 +199,7 @@ public class Server extends Thread implements Runnable {
 	}
 	
 	public void depart (String id){
+		parent.NUM_NODES--;
 		int i;
 		for(i=0; i<parent.nodes.size(); i++){
 			if (parent.nodes.get(i).myId.equals(id)){
@@ -293,7 +288,7 @@ public class Server extends Thread implements Runnable {
 				i = operands.indexOf(',');
 				key = operands.substring(1, i) ;
 				value = operands.substring(i+2,operands.length() );
-				//System.out.println("Received insert <" + key + "," + value + ">");
+			//	System.out.println("Received insert <" + key + "," + value + ">");
 				//comp = compareKeys(myId,key) ;
 			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
@@ -301,6 +296,7 @@ public class Server extends Thread implements Runnable {
 				if ( comp == 1 || comp == 0)
 				{
 					if( Key.compare(previous.a, keySHA) == -1 ){
+						System.out.println("Into insert for key " + key + " and val " + value);
 						Tuple<String,String> result = insert(key,value);
 						int src = req.getSource();
 						Response response = new Response("insert",result);
@@ -311,11 +307,13 @@ public class Server extends Thread implements Runnable {
 						new Thread(new Client("127.0.0.1", src, response)).start();
 					}
 					else {
+				//		System.out.println("Into else for insertion of key "+ key);
 						new Thread( new Client("127.0.0.1", next.b, req)).start();
 						//send insert command to previous 
 					}
 				}
 				else if (comp == -1) {
+				//	System.out.println("Into else if for insertion of key "+ key);
 					//send insert to next
 					if (!myId.equals(parent.nodes.get(parent.nodes.size()-1).myId))
 						new Thread( new Client("127.0.0.1", next.b, req)).start();

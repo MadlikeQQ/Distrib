@@ -20,7 +20,7 @@ public class Key {
 			
 			for (int i=0; i< k1.length; i++){
 				if(k1[i] > k2[i]) return 1;
-			else if(k1[i] < k2[i]) return -1;
+				else if(k1[i] < k2[i]) return -1;
 			}
 			return 0;
 		}
