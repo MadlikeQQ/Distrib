@@ -1,10 +1,13 @@
 package org.distrib.key;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.DigestException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+
+import com.sun.xml.internal.fastinfoset.stax.events.CharactersEvent;
 
 public class Key {
 		public static String generate(String name, int space) {
@@ -42,13 +45,13 @@ public class Key {
 			String sha1 = null;
 			try {
 				MessageDigest md = MessageDigest.getInstance("SHA1");
-				byte[] result = new byte[40];
+				byte[] result = new byte[20];
 				Arrays.fill(result,(byte)0);
 				md.update(s.getBytes());
 				//System.out.printf("Digest length %d" ,md.getDigestLength());
-				md.digest(result, 40 - md.getDigestLength()  ,md.getDigestLength());
+				md.digest(result, 20 - md.getDigestLength()  ,md.getDigestLength());
 				
-				sha1 = new String(result, StandardCharsets.ISO_8859_1);
+				sha1 = bytesToHex(result);// new String(result, StandardCharsets.UTF_8 );
 				//System.out.println("Sha length = " + sha1.getBytes().length);
 			} catch (NoSuchAlgorithmException e){
 				e.printStackTrace();
@@ -70,5 +73,16 @@ public class Key {
 		                .substring(1));
 		    }
 		    return stringBuffer.toString();
+		}
+		
+		final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+		public static String bytesToHex(byte[] bytes) {
+		    char[] hexChars = new char[bytes.length * 2];
+		    for ( int j = 0; j < bytes.length; j++ ) {
+		        int v = bytes[j] & 0xFF;
+		        hexChars[j * 2] = hexArray[v >>> 4];
+		        hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+		    }
+		    return new String(hexChars);
 		}
 }

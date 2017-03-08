@@ -34,7 +34,7 @@ public class Emulator {
 	private Client[] clients;
 	public volatile int counter = 0;
 	public final int N=1048576;
-	public int maxport=4444;
+	public int maxport=4440;
 	public int coord_port;
 	private int replicas = 3;
 	
@@ -43,7 +43,7 @@ public class Emulator {
 	public Emulator ( ) {}
 	
 	public void run() throws IOException{
-		int port = 4444;
+		int port = 4440;
 		MessageDigest md = null; 
 		try {
 			md = MessageDigest.getInstance("SHA-1");
@@ -63,8 +63,9 @@ public class Emulator {
 			//nodes[i] = new Server(md.digest().toString(), port,this);
 			Server node = new Server(Key.sha1(id),port,this, replicas);
 			nodes.add(node);
-			port++;
 			maxport=port;
+			port++;
+			
 		}
 		
 		Collections.sort(nodes,new NodeComparator());
@@ -94,7 +95,7 @@ public class Emulator {
 		BufferedReader reader = Files.newBufferedReader(file,charset);
 		String line;
 		while( (line=reader.readLine()) != null && j <=10)   {
-			i = (int) (Math.random() * (NUM_NODES - 1)) + 4444;
+			i = (int) (Math.random() * (NUM_NODES - 1)) + 4440;
 			//System.out.println("Emulator chose port " + i);
 			/*
 			 * Serial
@@ -122,7 +123,7 @@ public class Emulator {
 		//p.setSource(i);
 		//new Thread( new Client("127.0.0.1", i,p)).start();
 		for(int k=0; k < nodes.size(); k++){
-    		System.out.println("Node: " + Key.toHex((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
+    		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
 		//System.exit(0); to see if shutdown hook works
 	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -138,7 +139,7 @@ public class Emulator {
 	    		new Thread( new Client("127.0.0.1", coord_port,tmp)).start();
 	    	}
 	    	else{
-	    		i = ThreadLocalRandom.current().nextInt(4444, maxport  + 1);
+	    		i = ThreadLocalRandom.current().nextInt(4440, maxport  + 1);
 	    		tmp.setSource(i);
 	    		new Thread( new Client("127.0.0.1", i,tmp)).start();
 	    	}

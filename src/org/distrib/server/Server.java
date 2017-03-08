@@ -14,8 +14,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -37,28 +39,29 @@ public class Server extends Thread implements Runnable {
 	
 	public int N = 1048576;
 	private static final int MIN_POOL_SIZE = 1;
-	private static final int MAX_POOL_SIZE = 100;
+	private static final int MAX_POOL_SIZE = 200;
 	private static final int DEFAULT_ALIVE_TIME = 60000;
 	
-	private HashMap<String,String> mySet = null;
+	private HashMap<String,Tuple<String,Integer>> mySet = null;
 	private Tuple<String,Integer> next =null;
 	private Tuple<String,Integer> previous = null;
 	private MessageDigest shaGen;
 	private int port = 0;
 	public Emulator parent = null;
 	private ThreadPoolExecutor workerThreadPool;
+	private ThreadPoolExecutor clientThreadPool;
 	private boolean hasToRun = true;
 	private boolean running = false;
 	private ServerSocket serverSocket;
 	private CountDownLatch startSignal = new CountDownLatch(1) ;
 	private int K = 1;
-	
+	private int departIdx = -1;
 	
 	
 	public Server(String ServerId, int port, Emulator parent) throws IOException{
 		//super(port);
 		this.myId = ServerId;		
-		this.mySet = new HashMap<String,String>();
+		this.mySet = new HashMap<String,Tuple<String,Integer>>();
 		this.port = port;
 		this.parent = parent;
 		this.coord = false;
@@ -67,7 +70,7 @@ public class Server extends Thread implements Runnable {
 	public Server(String ServerId, int port, Emulator parent, int K) throws IOException{
 		//super(port);
 		this.myId = ServerId;		
-		this.mySet = new HashMap<String,String>();
+		this.mySet = new HashMap<String,Tuple<String,Integer>>();
 		this.port = port;
 		this.parent = parent;
 		this.coord = false;
@@ -110,14 +113,16 @@ public class Server extends Thread implements Runnable {
 		
 		if (running) {
 			this.hasToRun = false;
+			if(workerThreadPool != null)
+				workerThreadPool.shutdown();
+			
 			if (this.serverSocket != null) {
 				try {
 					this.serverSocket.close();
 				} catch (IOException e) {
 				}
 			}
-			if(workerThreadPool != null)
-				workerThreadPool.shutdown();
+
 		}
 	}
 	
@@ -126,19 +131,69 @@ public class Server extends Thread implements Runnable {
 	
 /************************* Commands **********************/	
 	
-	public Tuple<String,String> insert(String key, String value){
+	public Tuple<String,String> insert(String key, String value, int k ){
 	//	System.out.println("inserted key " + key);
 		if(mySet.containsKey(key)){
-			String oldval = mySet.get(key);
+			Tuple<String,Integer> oldval = mySet.get(key);
 			//update existing value
-			mySet.replace(key, oldval, value);
+			mySet.replace(key, oldval, new Tuple<String,Integer>(value,k));
 		}
 		else{
-			mySet.put(key, value);
+			mySet.put(key, new Tuple<String,Integer>(value,k));
 		}
 //		System.out.println("Node with Id " + myId + " has the set: " + mySet);
 		return new Tuple<String,String>(key,value);
 	}
+	
+	
+	public ArrayList<Tuple<String,Tuple<String,Integer>>> insertBatch(ArrayList<Tuple<String,Tuple<String,Integer>>> batch){
+		Iterator<Tuple<String, Tuple<String,Integer>>> it = batch.iterator();
+		Tuple<String, Tuple<String,Integer>> temp;
+		while(it.hasNext()){
+			temp = it.next();
+			if(temp.b.b>=0){
+				mySet.put(temp.a, new Tuple<String,Integer>(temp.b.a,temp.b.b));
+			}
+		}
+		ArrayList<Tuple<String,Tuple<String,Integer>>> ret = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+		it = batch.iterator();
+		while(it.hasNext()){
+			temp = it.next();
+			temp.b.b++;
+			if(K - temp.b.b != 0){
+				ret.add(temp);
+			}
+		}
+		
+		return ret;
+	}
+	
+	public ArrayList<Tuple<String,Tuple<String,Integer>>> joinBatch(ArrayList<Tuple<String,Tuple<String,Integer>>> batch){
+		Iterator<Tuple<String, Tuple<String,Integer>>> it = batch.iterator();
+		Tuple<String, Tuple<String,Integer>> temp;
+		while(it.hasNext()){
+			temp = it.next();
+			if(temp.b.b<K){
+				mySet.put(temp.a, new Tuple<String,Integer>(temp.b.a,temp.b.b));
+			}
+			else{
+				mySet.remove(temp.a);
+			}
+		}
+		ArrayList<Tuple<String,Tuple<String,Integer>>> ret = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+		it = batch.iterator();
+		while(it.hasNext()){
+			temp = it.next();
+			temp.b.b++;
+			if(K - temp.b.b >= 0){
+				ret.add(temp);
+			}
+		}
+		
+		return ret;
+	}
+	
+	
 	public String delete(String key){
 	//	System.out.println("Node with Id " + myId  + " to remove key " + key);
 		mySet.remove(key);
@@ -149,13 +204,29 @@ public class Server extends Thread implements Runnable {
 		ArrayList<Tuple<String,String>> res = new ArrayList<Tuple<String,String>>();
 		if(key.equals("*")){
 			//lambda: for each (k,v) pair in mySet, add a new Tuple to res 
-			mySet.forEach((k,v) -> res.add(new Tuple<String,String>(k,v)));
+			mySet.forEach((k,v) -> res.add(new Tuple<String,String>(k,v.a)));
 		}
 		else{
 			if(mySet.containsKey(key))
-				res.add(new Tuple<String,String>(key,mySet.get(key)));
+				res.add(new Tuple<String,String>(key,mySet.get(key).a));
 		}
 		return res;
+	}
+	
+	public ArrayList<Tuple<String, Tuple<String,Integer>>> getSet(){
+		ArrayList<Tuple<String, Tuple<String,Integer>>> ret = new ArrayList<Tuple<String, Tuple<String,Integer>>>() ;
+		mySet.forEach((k,v) -> ret.add(new Tuple<String,Tuple<String,Integer>>(k,v)));
+		return ret;
+	}
+	
+	public ArrayList<Tuple<String, Tuple<String,Integer>>> getRightKeys(){
+		ArrayList<Tuple<String, Tuple<String,Integer>>> ret = new ArrayList<Tuple<String, Tuple<String,Integer>>>();
+		mySet.forEach((k,v) -> {
+			if (Key.compare(previous.a, k) != -1){
+				ret.add(new Tuple<String,Tuple<String,Integer>>(k,v)); 
+			}
+		});
+		return ret;
 	}
 	
 	
@@ -170,7 +241,7 @@ public class Server extends Thread implements Runnable {
 	
 /**************************** Coordinator Commands *************************/	
 	
-	public void join (String id) throws IOException{
+	public XRequest join (String id) throws IOException{
 		parent.NUM_NODES++;
 		//Set the new maxport for new nodes
 		int port = parent.maxport+1;
@@ -178,7 +249,7 @@ public class Server extends Thread implements Runnable {
 		Server node = new Server(id,port,parent);
 		int i;
 		for(i=0; i<parent.nodes.size(); i++){
-			if (Key.compare(parent.nodes.get(i).myId,id)==1){
+			if (i!= 0 && Key.compare(parent.nodes.get(i).myId,id)==1){
 				//Set neighbors for node to be inserted
 				node.setNeighbors(parent.nodes.get(i-1).myId, parent.nodes.get(i-1).port, parent.nodes.get(i).myId, parent.nodes.get(i).port);
 				//Update neighbors to adjacent nodes of the new one
@@ -186,7 +257,7 @@ public class Server extends Thread implements Runnable {
 				parent.nodes.get(i).previous=new Tuple<String,Integer>(id,port);
 				//Add the node to list
 				parent.nodes.add(i,node);
-				return;
+				break;
 			}
 			//If we must insert to the beginning
 			else if(i==0 && Key.compare(parent.nodes.get(i).myId,id)==1){			
@@ -196,47 +267,72 @@ public class Server extends Thread implements Runnable {
 				node.setNeighbors(parent.nodes.get(last).myId, parent.nodes.get(last).port, parent.nodes.get(0).myId, parent.nodes.get(0).port);
 				//Update the previous neighbor of the head node
 				parent.nodes.get(0).previous=new Tuple<String,Integer>(id,port);
+				parent.nodes.get(last).next =new Tuple<String,Integer>(id,port);
 				//Insert the new node to head
 				parent.nodes.add(0,node);
-				return;
+				break;
 			}
 		}
-		int last = parent.nodes.size()-1;
-		//The node must be inserted at end
-		//Set the neighbors for new node
-		node.setNeighbors(parent.nodes.get(last).myId, parent.nodes.get(last).port, parent.nodes.get(0).myId, parent.nodes.get(0).port);
-		//Update the neighbors for the last node of list
-		parent.nodes.get(last).next = new Tuple<String,Integer>(id,port);
-		//Add the node to list
-		parent.nodes.add(last+1,node);
-		
+		if(i == parent.nodes.size()){
+			int last = parent.nodes.size()-1;
+			//The node must be inserted at end
+			//Set the neighbors for new node
+			node.setNeighbors(parent.nodes.get(last).myId, parent.nodes.get(last).port, parent.nodes.get(0).myId, parent.nodes.get(0).port);
+			//Update the neighbors for the last node of list
+			parent.nodes.get(last).next = new Tuple<String,Integer>(id,port);
+			parent.nodes.get(0).previous = new Tuple<String,Integer>(id,port);
+			//Add the node to list
+			parent.nodes.add(i,node);
+		}
+		XRequest xreq = new XRequest("join","redistribute");
+		xreq.setSource(port);
+		xreq.setDestination(node.next.b);
+		node.start();
+		return xreq;
 		//2 methods for redistribution of keys: 1 for previous and 1 for next
 	}
 	
-	public void depart (String id){
+	public void departPointers(int i){
+		//System.out.println("departPointers");
 		parent.NUM_NODES--;
+		//We must remove the first node from the list
+		if(i==0){
+			parent.nodes.get(i+1).previous=parent.nodes.get(i).previous;
+		}
+		//We must remove the last node from the list
+		else if (i == parent.nodes.size()-1){
+			parent.nodes.get(i-1).next=parent.nodes.get(i).next;
+			
+		}
+		//We must remove an intermediate node from the list
+		else{
+			parent.nodes.get(i-1).next=parent.nodes.get(i).next;
+			parent.nodes.get(i).previous=parent.nodes.get(i).previous;
+			
+		}
+		//System.out.println("Removing " + i);
+
+		parent.nodes.get(i).shutdown();
+	
+		parent.nodes.remove(i);
+	}
+	
+	public XRequest depart (String id){
 		int i;
+		XRequest departReq = null;
 		for(i=0; i<parent.nodes.size(); i++){
 			if (parent.nodes.get(i).myId.equals(id)){
-				//We must remove the first node from the list
-				if(i==0){
-					parent.nodes.get(i+1).previous=parent.nodes.get(i).previous;
-				}
-				//We must remove the last node from the list
-				else if (i == parent.nodes.size()-1){
-					parent.nodes.get(i-1).next=parent.nodes.get(i).next;
-					
-				}
-				//We must remove an intermediate node from the list
-				else{
-					parent.nodes.get(i-1).next=parent.nodes.get(i).next;
-					parent.nodes.get(i).previous=parent.nodes.get(i).previous;
-					
-				}
+				departReq = new XRequest("depart","redistribute");
+				departReq.setSource(port);
+				departReq.setDestination(parent.nodes.get(i).port);
+				this.departIdx = i;
+				//System.out.println("depart sending request to port " + this.next.b + "with final destination " + parent.nodes.get(i).port);
 				//1 methods for redistribution: next gets all keys
-				parent.nodes.remove(i);
+				break;
 		}
 	}
+		return departReq;
+		
 }
 	
 /**************************** End Coordinator Commands *********************/	
@@ -257,7 +353,6 @@ public class Server extends Thread implements Runnable {
 			serverSocket = new ServerSocket(this.port);
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
-			e1.printStackTrace();
 		}
 		createWorkerThreadPool();
 		addShutdownHook();
@@ -270,8 +365,6 @@ public class Server extends Thread implements Runnable {
 			try {
 				socket = serverSocket.accept();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			} 
 			DoWork w = new DoWork(socket);
 			this.workerThreadPool.submit(w);
@@ -318,8 +411,8 @@ public class Server extends Thread implements Runnable {
 						new Thread(new Client("127.0.0.1", next.b, xr)).start();
 					}
 					
-					//System.out.printf("inserting key %s in node %s", Key.toHex(keySHA), Key.toHex(myId));
-					Tuple<String,String> result = insert(key,value);
+					//System.out.printf("inserting key %s in node %s", (keySHA), (myId));
+					Tuple<String,String> result = insert(key,value,0);
 					int src = req.getSource();
 					Response response = new Response("insert",result);
 					response.setDestination(src);
@@ -377,8 +470,8 @@ public class Server extends Thread implements Runnable {
 				if(key.equals("*")){
 					incCounter();
 					if(parent.counter <= parent.NUM_NODES) {
-						ArrayList<Tuple<String,String>> result = new ArrayList<Tuple<String,String>>();
-						result = query(key);
+						ArrayList<Tuple<String,Tuple<String,Integer>>> result = getSet();//new ArrayList<Tuple<String,String>>();
+						//result = query(key);
 						int src = req.getSource();
 						Response response = new Response("query",result);
 						response.setDestination(src);
@@ -413,40 +506,45 @@ public class Server extends Thread implements Runnable {
 				}
 				break;
 			case "show":
-				System.out.println("show");
+				//System.out.println("show");
 				for(int k=0; k < parent.nodes.size(); k++){
-		    		System.out.println("Node: " + Key.toHex(parent.nodes.get(k).myId)+" with port: "+ parent.nodes.get(k).getLocalPort());
+		    		System.out.println("Node: " + (parent.nodes.get(k).myId)+" with port: "+ parent.nodes.get(k).getLocalPort());
 		    	}
 				break;
 			case "join":
 				if (coord ==true){
 					//i = operands.indexOf(',');
-					String id = operands.split(" ")[1] ;
+					String id = operands.substring(1, operands.length()) ;
 			//		keySHA = Key.generate(id, N);
 					keySHA = Key.sha1(id);
-					join(keySHA);
+					XRequest xreq =	null;
+					xreq= join(keySHA);
+					new Thread(new Client("127.0.0.1",next.b,xreq)).start();
 				}
 				break;
 			case "depart":
 				if (coord ==true){
 					//i = operands.indexOf(',');
-					String id = operands.split(" ")[1] ;
+					String id = operands.substring(1, operands.length()) ;
+					//System.out.println("Received depart for node " + id );
 				//	System.out.println("Depart of node"+id+"blalblaldfl");
 					keySHA = Key.sha1(id);
-			//		System.out.println("With sha "+keySHA);
-					depart(keySHA);
+					//System.out.println("With sha "+keySHA);
+					XRequest wtf = depart(keySHA);
+					//System.out.println(wtf);
+					new Thread(new Client("127.0.0.1",next.b,wtf)).start();
 				}
 				break;
 			}
 		}
 		
 		public void HandleXRequests(XRequest xreq){
-			//System.out.println("Xreq handle");
 			int i, src,k ;
 			String key, value, keySHA;
 			String operation = xreq.getOperation();
 			String operands = xreq.getOperands();
 			String type = xreq.getType();
+			//System.out.println("Xreq handle with type " + type);
 			Response response=null;
 			if(type.equals("mandatory")){
 				switch (operation){
@@ -461,7 +559,7 @@ public class Server extends Thread implements Runnable {
 					//comp = compareKeys(myId,key) ;
 					//	keySHA = Key.generate(key, N);
 					keySHA = Key.sha1(key);
-					Tuple<String,String> ires = insert(key,value);
+					Tuple<String,String> ires = insert(key,value, K - k);
 					src = xreq.getSource();
 					response = new Response("insert",ires);
 					response.setDestination(src);
@@ -476,7 +574,7 @@ public class Server extends Thread implements Runnable {
 					}
 					break;
 				case "delete":
-					k = xreq.getK();
+		 			k = xreq.getK();
 					if(k-1 >= 0){
 						key = operands.substring(1, operands.length()) ;
 						//	keySHA = Key.generate(key, N);
@@ -511,22 +609,58 @@ public class Server extends Thread implements Runnable {
 					//send response to client
 					new Thread(new Client("127.0.0.1", src,response)).start();
 				}
-		}	
+		}
+			else if(type.equals("depart")){
+				//System.out.println("depard response");
+				operation = xreq.getCommand();
+				switch(operation){
+				case "redistribute":
+					if(xreq.getDestination() == port){
+						//i received an XRequest to give my keys (depart)
+						ArrayList<Tuple<String,Tuple<String, Integer>>> result = getSet();
+						Response sendKeys = new Response("insertbatch", result);
+						sendKeys.setSource(xreq.getSource());
+						sendKeys.setDestination(previous.b);
+						sendKeys.setNode(myId);
+						new Thread(new Client("127.0.0.1", next.b,sendKeys)).start();
+					}
+					else{
+						//i received an XRequest (not for me) 
+						new Thread(new Client("127.0.0.1",next.b,xreq)).start();
+					}
+				break;
+				}
+			}
+			else if (type.equals("join")){
+				operation = xreq.getCommand();
+				if(xreq.getDestination() == port){
+					ArrayList<Tuple<String,Tuple<String, Integer>>> result = new ArrayList<Tuple<String,Tuple<String, Integer>>>();
+					result = getRightKeys();
+					Response sendKeys = new Response("joinbatch", result);
+					sendKeys.setSource(xreq.getSource());
+					sendKeys.setDestination(previous.b);
+					sendKeys.setNode(myId);
+					new Thread(new Client("127.0.0.1", next.b,sendKeys)).start();
+				}
+				else{
+					new Thread(new Client("127.0.0.1",next.b,xreq)).start();
+				}
+			}
 	}
 		
 		private void HandleResponse(Response response){
 			String operation = response.getOperation();
 			Object payload = response.getPayload();
 			System.out.println("*****Reponse******");
-			System.out.println("From: " + Key.toHex(response.getNode()));
-			System.out.println("To  : " + Key.toHex(myId));
+			System.out.println("From: " + (response.getNode()));
+			System.out.println("To  : " + (myId));
 			System.out.println("Message: ");
 			switch (operation){
 			case "query":
-				ArrayList<Tuple<String,String>> pld = (ArrayList<Tuple<String,String>>)payload;
+				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
 				//System.out.println("Data from node " + response.getNode()+ ":");
 				for(int i=0; i<pld.size(); i++){
-					System.out.println(pld.get(i).a + ","+pld.get(i).b);
+					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
 				
 				break;
@@ -538,7 +672,55 @@ public class Server extends Thread implements Runnable {
 				String dlt = payload.toString();
 				System.out.println("Deleted key "+ dlt  );
 			break;
-			}		
+			case "insertbatch":
+				//System.out.println("Into REsponse - insertbatch");
+				ArrayList<Tuple<String,Tuple<String,Integer>>> newKeys = (ArrayList<Tuple<String,Tuple<String,Integer>>>) payload;
+				ArrayList<Tuple<String,Tuple<String,Integer>>> fwdbatch = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+				fwdbatch= insertBatch(newKeys);
+				if(fwdbatch.isEmpty()){
+					Response departOK = new Response("departOK",null);
+					departOK.setDestination(response.getSource());
+					departOK.setNode(myId);
+					new Thread(new Client("127.0.0.1",next.b,departOK)).start();
+				}
+				else{
+					response.setPayload(fwdbatch);
+					new Thread(new Client("127.0.0.1",next.b,response)).start();
+				}
+				break;
+			case "departOK":
+				if(port == response.getDestination())
+					departPointers(departIdx);
+				else 
+					new Thread(new Client("127.0.0.1",next.b,response)).start();
+				break;
+			case "joinOK":
+				if(port == response.getDestination())
+						System.out.println("Join Ok");
+				else 
+					new Thread(new Client("127.0.0.1",next.b,response)).start();
+				break;
+			case "joinbatch":
+				if(response.getDestination() == port){
+					ArrayList<Tuple<String,Tuple<String,Integer>>> nKeys = (ArrayList<Tuple<String,Tuple<String,Integer>>>) payload;
+					ArrayList<Tuple<String,Tuple<String,Integer>>> fbatch = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+					fbatch= joinBatch(nKeys);
+					if(fbatch.isEmpty()){
+						Response joinOK = new Response("joinOK",null);
+						joinOK.setDestination(response.getSource());
+						joinOK.setNode(myId);
+						new Thread(new Client("127.0.0.1",next.b,joinOK)).start();
+					}
+					else{
+						response.setPayload(fbatch);
+						new Thread(new Client("127.0.0.1",next.b,response)).start();
+					}					
+				}
+				else{
+					new Thread(new Client("127.0.0.1",next.b,response)).start();
+				}
+				break;
+			}
 			System.out.println();
 		}
 		
@@ -553,7 +735,7 @@ public class Server extends Thread implements Runnable {
 				in = new ObjectInputStream( socket.getInputStream());
 				Object messageObj =  null;
 				messageObj = in.readObject();
-				//System.out.println(messageObj.getClass());
+				//System.out.println(messageObj.getClass() + "i have port "+ port);
 				if( messageObj instanceof XRequest){
 					HandleXRequests((XRequest)messageObj);
 				}
@@ -568,11 +750,8 @@ public class Server extends Thread implements Runnable {
 			//	in = new BufferedReader(inS);
 			} catch (IOException e) {
 				// TODO Auto-generated catch blockσ
-				e.printStackTrace();
-				System.out.print("IOEXCP");
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 			finally{//close resources
 				try {
@@ -582,7 +761,6 @@ public class Server extends Thread implements Runnable {
 						socket.close();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
 				}
 			}
 

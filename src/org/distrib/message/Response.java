@@ -28,6 +28,10 @@ public class Response extends Message implements Serializable{
 		return payload;
 	}
 	
+	public void setPayload(Object obj){
+		payload = obj;
+	}
+	
 	public void setNode(String node){
 		SrcNode = node;
 	}

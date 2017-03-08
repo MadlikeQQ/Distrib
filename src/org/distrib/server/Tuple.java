@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 public class Tuple<A,B> implements Serializable {
 	 public final A a; 
-	    public final B b; 
+	    public B b; 
 	    public Tuple(A a, B b) { 
 	        this.a = a; 
 	        this.b = b;
