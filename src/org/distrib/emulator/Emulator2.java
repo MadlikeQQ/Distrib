@@ -23,15 +23,15 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.distrib.client.Client;
 import org.distrib.key.Key;
 import org.distrib.message.Request;
-import org.distrib.server.EventualServer;
+import org.distrib.server.LinearServer;
 import org.distrib.server.Server;
 
 
-public class Emulator {
+public class Emulator2 {
 	
 	
 	public int NUM_NODES = 10;
-	public ArrayList<EventualServer> nodes;
+	public ArrayList<LinearServer> nodes;
 	private Client[] clients;
 	public volatile int counter = 0;
 	public final int N=1048576;
@@ -41,7 +41,7 @@ public class Emulator {
 	
 	CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
 	
-	public Emulator ( ) {}
+	public Emulator2 ( ) {}
 	
 	public void run() throws IOException{
 		int port = 4440;
@@ -55,21 +55,21 @@ public class Emulator {
 		
 		
 		
-		nodes = new ArrayList<EventualServer>();
+		nodes = new ArrayList<LinearServer>();
 		clients = new Client[NUM_NODES];
 		int i;
 		for (i = 0 ; i <NUM_NODES; i++ ){
 			String id = Integer.toString(i);
 			//md.update(id.getBytes());
 			//nodes[i] = new Server(md.digest().toString(), port,this);
-			EventualServer node = new EventualServer(Key.sha1(id),port,this, replicas);
+			LinearServer node = new LinearServer(Key.sha1(id),port,this, replicas);
 			nodes.add(node);
 			maxport=port;
 			port++;
 			
 		}
 		
-		Collections.sort(nodes,new NodeComparator());
+		Collections.sort(nodes,new NodeComparator2());
 		
 		for (i = 0 ; i < NUM_NODES ; i++){
 			//Number of current nodes in list
@@ -152,7 +152,7 @@ public class Emulator {
 
 	public static void main(String[] args) throws IOException
 	{
-		Emulator em = new Emulator();
+		Emulator2 em = new Emulator2();
 		em.run();
 		
 	}
