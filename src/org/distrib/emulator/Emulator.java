@@ -60,8 +60,6 @@ public class Emulator {
 		int i;
 		for (i = 0 ; i <NUM_NODES; i++ ){
 			String id = Integer.toString(i);
-			//md.update(id.getBytes());
-			//nodes[i] = new Server(md.digest().toString(), port,this);
 			EventualServer node = new EventualServer(Key.sha1(id),port,this, replicas);
 			nodes.add(node);
 			maxport=port;
@@ -97,50 +95,25 @@ public class Emulator {
 		String line;
 		while( (line=reader.readLine()) != null && j <=20)   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
-			//System.out.println("Emulator chose port " + i);
-			/*
-			 * Serial
-			 */
-			///*
-			//Socket s = new Socket("127.0.0.1", i);
-			
 			Request r = new Request("insert, " +line);
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
-			
-			//s.getOutputStream().flush();
-			//s.getOutputStream().write(m.getBytes());
-			//s.close();
-			//*/
-			/*
-			 * Async
-			 */
-			
-			//new Thread( new Client("127.0.0.1", i,"insert, "+line)).start();
-			
 			j++;
 		}
-		//Request p = new Request("query, *");
-		//p.setSource(i);
-		//new Thread( new Client("127.0.0.1", i,p)).start();
+
 		for(int k=0; k < nodes.size(); k++){
     		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
-		//System.exit(0); to see if shutdown hook works
 	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
-	    	//Socket sct = new Socket("127.0.0.1",coord_port);
-	    	//sct.getOutputStream().flush();
-	    	//sct.getOutputStream().write(input.getBytes());
-	    	//sct.close();
 	    	Request tmp = new Request(input);
 	    	
 	    	if(tmp.getOperation().equals("join") || tmp.getOperation().equals("depart")){
 	    		new Thread( new Client("127.0.0.1", coord_port,tmp)).start();
 	    	}
 	    	else{
-	    	//	i = ThreadLocalRandom.current().nextInt(4440, maxport  + 1);
+	    		// we randomly choose a node to forward the request
 	    		i = (int) (Math.random() * (NUM_NODES - 1));
 	    		tmp.setSource(nodes.get(i).getLocalPort());
 	    		new Thread( new Client("127.0.0.1", nodes.get(i).getLocalPort(),tmp)).start();
