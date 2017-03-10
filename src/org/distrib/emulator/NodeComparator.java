@@ -1,14 +1,13 @@
 package org.distrib.emulator;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 
 import org.distrib.key.Key;
 import org.distrib.server.*;
-
+/*
+ * Comparator for Eventual Server ids
+ */
 public class NodeComparator implements Comparator<EventualServer>{
 	
-	private MessageDigest md = null;
 	
 	public NodeComparator(){
 	}

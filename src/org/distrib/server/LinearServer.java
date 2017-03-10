@@ -1,34 +1,23 @@
 package org.distrib.server;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
 import org.distrib.key.*;
 import org.distrib.message.Request;
 import org.distrib.message.Response;
 import org.distrib.message.XRequest;
-
-import com.sun.org.apache.xpath.internal.axes.SubContextList;
-
 import org.distrib.client.*;
 import org.distrib.emulator.Emulator;
 import org.distrib.emulator.Emulator2;
@@ -49,7 +38,7 @@ public class LinearServer extends Server implements Runnable {
 	private Tuple<String,Integer> previous = null;
 	private int port = 0;
 	public Emulator2 parent = null;
-	private ThreadPoolExecutor workerThreadPool;
+	private ExecutorService workerThreadPool;
 	private boolean hasToRun = true;
 	private boolean running = false;
 	public ServerSocket serverSocket;
@@ -59,7 +48,6 @@ public class LinearServer extends Server implements Runnable {
 	
 	
 	public LinearServer(String ServerId, int port, Emulator2 parent) throws IOException{
-		//super(port);
 		this.myId = ServerId;		
 		this.mySet = new HashMap<String,Tuple<String,Integer>>();
 		this.port = port;
@@ -68,7 +56,6 @@ public class LinearServer extends Server implements Runnable {
 	}
 	
 	public LinearServer(String ServerId, int port, Emulator2 parent, int K) throws IOException{
-		//super(port);
 		this.myId = ServerId;		
 		this.mySet = new HashMap<String,Tuple<String,Integer>>();
 		this.port = port;
@@ -85,7 +72,6 @@ public class LinearServer extends Server implements Runnable {
 		try {
 			startSignal.await();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -105,12 +91,13 @@ public class LinearServer extends Server implements Runnable {
 	}
 	
 	private void createWorkerThreadPool(){
-		this.workerThreadPool = new ThreadPoolExecutor(
+		this.workerThreadPool = Executors.newFixedThreadPool(MAX_POOL_SIZE);
+				/*new ThreadPoolExecutor(
 				MIN_POOL_SIZE, 
 				MAX_POOL_SIZE, 
 				DEFAULT_ALIVE_TIME, 
 				TimeUnit.MILLISECONDS, 
-				new ArrayBlockingQueue<Runnable>(10)) ;
+				new ArrayBlockingQueue<Runnable>(10)) ;*/
 	}
 	
 	private void addShutdownHook() {
@@ -145,7 +132,6 @@ public class LinearServer extends Server implements Runnable {
 /************************* Commands **********************/	
 	
 	public Tuple<String,String> insert(String key, String value, int k ){
-	//	System.out.println("inserted key " + key);
 		if(mySet.containsKey(key)){
 			Tuple<String,Integer> oldval = mySet.get(key);
 			//update existing value
@@ -154,7 +140,6 @@ public class LinearServer extends Server implements Runnable {
 		else{
 			mySet.put(key, new Tuple<String,Integer>(value,k));
 		}
-//		System.out.println("Node with Id " + myId + " has the set: " + mySet);
 		return new Tuple<String,String>(key,value);
 	}
 	
@@ -182,13 +167,11 @@ public class LinearServer extends Server implements Runnable {
 	}
 	
 	public ArrayList<Tuple<String,Tuple<String,Integer>>> joinBatch(ArrayList<Tuple<String,Tuple<String,Integer>>> batch){
-	//	System.out.println("Into join batch");
 		Iterator<Tuple<String, Tuple<String,Integer>>> it = batch.iterator();
 		Tuple<String, Tuple<String,Integer>> temp;
 		while(it.hasNext()){
 			temp = it.next();
 			if(temp.b.b<K){
-		//		System.out.println("Insert" + temp.a +" to my batch");
 				mySet.put(temp.a, new Tuple<String,Integer>(temp.b.a,temp.b.b));
 			}
 			else{
@@ -204,13 +187,11 @@ public class LinearServer extends Server implements Runnable {
 				ret.add(temp);
 			}
 		}
-		//System.out.println("In join batch printin set " + mySet + " in node port " + port);
 		return ret;
 	}
 	
 	
 	public String delete(String key){
-	//	System.out.println("Node with Id " + myId  + " to remove key " + key);
 		mySet.remove(key);
 		return key;
 	}
@@ -317,11 +298,9 @@ public class LinearServer extends Server implements Runnable {
 		xreq.setDestination(node.next.b);
 		node.start();
 		return xreq;
-		//2 methods for redistribution of keys: 1 for previous and 1 for next
 	}
 	
 	public void departPointers(int i){
-		//System.out.println("departPointers");
 		parent.NUM_NODES--;
 		//We must remove the first node from the list
 		if(i==0){
@@ -344,8 +323,6 @@ public class LinearServer extends Server implements Runnable {
 			parent.nodes.get(i+1).previous=parent.nodes.get(i).previous;
 			
 		}
-		//System.out.println("Removing " + i);
-		//parent.nodes.get(i).shutdown();
 		parent.nodes.get(i).queueShutdown();
 		Request shutdown = null;
 		//send msg to node for termination
@@ -362,8 +339,6 @@ public class LinearServer extends Server implements Runnable {
 				departReq.setSource(port);
 				departReq.setDestination(parent.nodes.get(i).port);
 				this.departIdx = i;
-				//System.out.println("depart sending request to port " + this.next.b + "with final destination " + parent.nodes.get(i).port);
-				//1 methods for redistribution: next gets all keys
 				break;
 		}
 	}
@@ -376,6 +351,7 @@ public class LinearServer extends Server implements Runnable {
 	
 	
 	private synchronized void incCounter (){
+		
 		parent.counter++;
 	}
 	private synchronized void resetCounter(){
@@ -402,9 +378,9 @@ public class LinearServer extends Server implements Runnable {
 				socket = serverSocket.accept();
 				DoWork w = new DoWork(socket);
 				this.workerThreadPool.submit(w);
+				//new Thread(new DoWork(socket)).start();
 			} catch (IOException e) {
 			} 
-			//new Thread(new DoWork(socket)).start();
 			
 		}
 		System.out.println("Node "+ myId + " shutting down gracefully");
@@ -424,9 +400,8 @@ public class LinearServer extends Server implements Runnable {
 
 		/**************************** Handle Requests *****************************/
 		public void HandleRequests(Request req) throws IOException{
-			//System.out.println("received req with Serial ID " + req.getSerialVersionID());
-			int i, comp ;
-			String key, value, respondPort, keySHA;
+			int i ;
+			String key, value,  keySHA;
 			String operation = req.getOperation();
 			String operands = req.getOperands();
 			ArrayList<Tuple<String,Tuple<String,Integer>>> result;
@@ -435,24 +410,19 @@ public class LinearServer extends Server implements Runnable {
 				i = operands.indexOf(',');
 				key = operands.substring(1, i) ;
 				value = operands.substring(i+2,operands.length() );
-			//	System.out.println("Received insert <" + key + "," + value + ">");
-				//comp = compareKeys(myId,key) ;
-			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
-				comp = Key.compare(myId, keySHA);
 
 				if(Key.between(keySHA, previous.a, myId)){
 					//Replication request
-					//System.out.println("Kappa = "  + K );
 					if(K-1 > 0){
 						XRequest xr = new XRequest("mandatory",req.getCommand());//(XRequest) req;
 						xr.setK(K-1);
 						xr.setSource(req.getSource());
 						xr.setDestination(next.b);
+						xr.setSerialVersionID(req.getSerialVersionID());
 						new Thread(new Client("127.0.0.1", next.b, xr)).start();
 					}	
-					//System.out.printf("inserting key %s in node %s", (keySHA), (myId));
-					insert(key,value,0);				
+					insert(key,value,0);	
 				}
 				else {
 					new Thread( new Client("127.0.0.1", next.b, req)).start();
@@ -461,20 +431,17 @@ public class LinearServer extends Server implements Runnable {
 				break;
 			case "delete":
 				key = operands.substring(1, operands.length()) ;
-				//System.out.println("received delete command for: " + key);
-			//	keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
-				comp = Key.compare(myId,keySHA) ;
 	 			result = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
 				result = getSet(key);
 				if(Key.between(keySHA, previous.a, myId) && !result.isEmpty()){
 					//Replication request
 					if(K-1 > 0){
-						//System.out.println("Kappa = "  + K );
-						XRequest xr = new XRequest("mandatory",req.getCommand());//(XRequest) req;
+						XRequest xr = new XRequest("mandatory",req.getCommand());
 						xr.setK(K-1);
 						xr.setSource(req.getSource());
 						xr.setDestination(next.b);
+						xr.setSerialVersionID(req.getSerialVersionID());
 						new Thread(new Client("127.0.0.1", next.b, xr)).start();
 					}
 					
@@ -486,27 +453,21 @@ public class LinearServer extends Server implements Runnable {
 				break;
 			case "query":
 				key =  operands.substring(1) ;
-				//comp = compareKeys(myId,key) ;
-				//keySHA = Key.generate(key, N);
 				keySHA = Key.sha1(key);
-				//comp = Key.compare(myId, keySHA);
 				if(key.equals("*")){
-					incCounter();
 					if(parent.counter <= parent.NUM_NODES) {
-						result = getSet("*");//new ArrayList<Tuple<String,String>>();
-						//result = query(key);
+						result = getSet("*");
 						int src = req.getSource();
 						Response response = new Response("query",result);
 						response.setDestination(src);
 						response.setSource(port);
 						response.setNode(myId);
+						response.setCommand(req.getCommand());
+						response.setOriginalRequestID(req.getSerialVersionID());
 						//send response to client
 						new Thread(new Client("127.0.0.1", src, response)).start();
 						//send message to next
 						new Thread( new Client("127.0.0.1", next.b, req)).start();
-						//send answer to first client
-					//	System.out.println("Set :" + mySet + " in port "+port);
-						//new Thread( new Client("127.0.0.1", Integer.parseInt(respondPort), command)).start();
 					}
 					else 
 						resetCounter();
@@ -515,35 +476,27 @@ public class LinearServer extends Server implements Runnable {
 				result = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
 				result = getSet(key);
 				if(Key.between(keySHA, previous.a, myId) ){
-					if(!result.isEmpty()){
 						if (K-1 >0){
-							//System.out.println("Prwteuon kombos stelnei to xreq");
 							XRequest xreq = new XRequest("mandatory",req.getCommand());
 							xreq.setK(K-1);
 							xreq.setSource(req.getSource());
 							xreq.setDestination(next.b);
+							xreq.setSerialVersionID(req.getSerialVersionID());
 							new Thread(new Client("127.0.0.1",next.b,xreq)).start();
 						}
-					}
-					
 				}
 				else {
-					//System.out.println("Forward the query to next port "+ next.b);
 					new Thread( new Client("127.0.0.1", next.b, req)).start();
-					//send delete command to previous 
 				}
 				break;
 			case "show":
-				//System.out.println("show");
 				for(int k=0; k < parent.nodes.size(); k++){
 		    		System.out.println("Node: " + (parent.nodes.get(k).myId)+" with port: "+ parent.nodes.get(k).getLocalPort());
 		    	}
 				break;
 			case "join":
 				if (coord ==true){
-					//i = operands.indexOf(',');
 					String id = operands.substring(1, operands.length()) ;
-			//		keySHA = Key.generate(id, N);
 					keySHA = Key.sha1(id);
 					XRequest xreq =	null;
 					xreq= join(keySHA);
@@ -552,14 +505,9 @@ public class LinearServer extends Server implements Runnable {
 				break;
 			case "depart":
 				if (coord ==true){
-					//i = operands.indexOf(',');
 					String id = operands.substring(1, operands.length()) ;
-					//System.out.println("Received depart for node " + id );
-				//	System.out.println("Depart of node"+id+"blalblaldfl");
 					keySHA = Key.sha1(id);
-					//System.out.println("With sha "+keySHA);
 					XRequest wtf = depart(keySHA);
-					//System.out.println(wtf);
 					new Thread(new Client("127.0.0.1",next.b,wtf)).start();
 				}
 				break;
@@ -572,24 +520,17 @@ public class LinearServer extends Server implements Runnable {
 			String operation = xreq.getOperation();
 			String operands = xreq.getOperands();
 			String type = xreq.getType();
-			//System.out.println("Xreq handle with type " + type);
 			Response response=null;
 			if(type.equals("mandatory")){
 				switch (operation){
 				case "insert":
 					k = xreq.getK();
-					//System.out.println(k);
 					if(k-1 >= 0){
-					//System.out.println("Received insert");
 					i = operands.indexOf(',');
 					key = operands.substring(1, i) ;
 					value = operands.substring(i+2,operands.length() );
-					//comp = compareKeys(myId,key) ;
-					//	keySHA = Key.generate(key, N);
 					keySHA = Key.sha1(key);
 					Tuple<String,String> ires = insert(key,value, K - k);
-					//send response to client
-					///new Thread(new Client("127.0.0.1", src, response)).start();
 					
 					//Replica
 					if(k-1 > 0){
@@ -602,6 +543,9 @@ public class LinearServer extends Server implements Runnable {
 						response.setDestination(src);
 						response.setSource(port);
 						response.setNode(myId);
+						response.setCommand(xreq.getCommand());
+						response.setOriginalRequestID(xreq.getSerialVersionID());
+						response.setTimeOriginated( System.currentTimeMillis() - parent.startT );
 						//send response to client
 						new Thread(new Client("127.0.0.1", src, response)).start();
 					}
@@ -614,13 +558,10 @@ public class LinearServer extends Server implements Runnable {
 		 			result = getSet(key);
 					if(k-1 >= 0 && !result.isEmpty()){
 						key = operands.substring(1, operands.length()) ;
-						//	keySHA = Key.generate(key, N);
 						keySHA = Key.sha1(key);
 						String dres = delete(key);
 					
-						//System.out.println("Sendin response to node "+ src+ "for key " + dres);
 						//send response to client
-						//new Thread(new Client("127.0.0.1", src, response)).start();
 
 						//Replica
 						if(k-1>0){
@@ -633,6 +574,9 @@ public class LinearServer extends Server implements Runnable {
 							response.setDestination(src);
 							response.setSource(port);
 							response.setNode(myId);
+							response.setCommand(xreq.getCommand());
+							response.setOriginalRequestID(xreq.getSerialVersionID());
+							response.setTimeOriginated( System.currentTimeMillis() - parent.startT);
 							new Thread(new Client("127.0.0.1", src, response)).start();
 						}
 					}
@@ -655,6 +599,9 @@ public class LinearServer extends Server implements Runnable {
 						response.setDestination(src);
 						response.setSource(port);
 						response.setNode(myId);
+						response.setCommand(xreq.getCommand());
+						response.setOriginalRequestID(xreq.getSerialVersionID());
+						response.setTimeOriginated( System.currentTimeMillis() - parent.startT);
 						new Thread(new Client("127.0.0.1", src,response)).start();
 					}
 				}
@@ -701,6 +648,8 @@ public class LinearServer extends Server implements Runnable {
 			System.out.println("*****Reponse " + response.getOperation() + "******");
 			System.out.println("From: " + (response.getNode()));
 			System.out.println("To  : " + (myId));
+			System.out.println("Request: " + response.getCommand() + " ID " + response.getOriginalRequestID());
+			System.out.println("Operation was done at : " + response.getTimeOriginated());
 			System.out.println("Message: ");
 		}
 		private void HandleResponse(Response response){
@@ -709,14 +658,12 @@ public class LinearServer extends Server implements Runnable {
 			try {
 				parent.printLatch.acquire();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			switch (operation){
 			case "query":
 				printMessage(response);
 				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
-				//System.out.println("Data from node " + response.getNode()+ ":");
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
@@ -735,7 +682,6 @@ public class LinearServer extends Server implements Runnable {
 				System.out.println();
 			break;
 			case "insertbatch":
-				//System.out.println("Into REsponse - insertbatch");
 				ArrayList<Tuple<String,Tuple<String,Integer>>> newKeys = (ArrayList<Tuple<String,Tuple<String,Integer>>>) payload;
 				ArrayList<Tuple<String,Tuple<String,Integer>>> fwdbatch = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
 				fwdbatch= insertBatch(newKeys);
@@ -769,14 +715,12 @@ public class LinearServer extends Server implements Runnable {
 					ArrayList<Tuple<String,Tuple<String,Integer>>> fbatch = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
 					fbatch= joinBatch(nKeys);
 					if(fbatch.isEmpty()){
-						//System.out.println("Node with port "+ port + " sending to coord");
 						Response joinOK = new Response("joinOK",null);
 						joinOK.setDestination(response.getSource());
 						joinOK.setNode(myId);
 						new Thread(new Client("127.0.0.1",next.b,joinOK)).start();
 					}
 					else{
-						//System.out.println("Forwarding the batch to next " + next.b);
 						response.setPayload(fbatch);
 						response.setDestination(next.b);
 						new Thread(new Client("127.0.0.1",next.b,response)).start();
@@ -809,7 +753,6 @@ public class LinearServer extends Server implements Runnable {
 		
 		@Override
 		public void run(){
-			incWorkers();
 			ObjectInputStream in = null;
 			try{
 				in = new ObjectInputStream( socket.getInputStream());
@@ -829,11 +772,11 @@ public class LinearServer extends Server implements Runnable {
 
 			//	in = new BufferedReader(inS);
 			} catch (IOException e) {
-				 decWorkers();
+				e.printStackTrace();
 				// TODO Auto-generated catch blockσ
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
-				 decWorkers();
+				e.printStackTrace();
 			}
 			finally{//close resources
 				try {
@@ -843,10 +786,9 @@ public class LinearServer extends Server implements Runnable {
 						socket.close();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
+					e.printStackTrace();
 
 				}
-				setMaxTime(System.currentTimeMillis());
-				 decWorkers();
 			}
 
 		}

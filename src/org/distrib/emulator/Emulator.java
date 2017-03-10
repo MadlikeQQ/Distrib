@@ -29,7 +29,9 @@ import org.distrib.server.Server;
 
 import com.sun.corba.se.impl.orbutil.concurrent.Mutex;
 
-
+/*
+ * Spawn nodes with eventual consistency
+ */
 public class Emulator {
 	
 	
@@ -47,7 +49,8 @@ public class Emulator {
 	public CountDownLatch latch = new CountDownLatch(NUM_NODES); 
 	public Mutex printLatch = new Mutex();
 	public Emulator ( ) {}
-	
+	public long startT = System.currentTimeMillis();
+
 	public void run() throws IOException{
 		int port = 4440;
 		MessageDigest md = null; 
@@ -107,13 +110,21 @@ public class Emulator {
 		int j = 1;
 		file =  Paths.get("requests.txt");
 		reader = Files.newBufferedReader(file,charset);
-		while( (line=reader.readLine()) != null )   {
+		while( (line=reader.readLine()) != null  )   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
 			Request r = new Request(line);
+			r.setSerialVersionID(j);
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
 		}
+		
+		
+		
+		/*
+		 * Uncomment for interactive input to emulator
+		 * 
+		 */
 		/////
 		/*while(true){
 			long elapsed = endTime - tStart;
@@ -134,10 +145,10 @@ public class Emulator {
     		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
 		
+		*/
 		
 		
-		
-	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+	   /* BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
 	    	Request tmp = new Request(input);
@@ -152,8 +163,8 @@ public class Emulator {
 	    		new Thread( new Client("127.0.0.1", nodes.get(i).getLocalPort(),tmp)).start();
 	    	}
 	    		
-	    }
-		*/
+	    }*/
+		
 	}
 
 	public static void main(String[] args) throws IOException

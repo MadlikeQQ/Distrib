@@ -12,15 +12,13 @@ import com.sun.xml.internal.fastinfoset.stax.events.CharactersEvent;
 public class Key {
 		public static String generate(String name, int space) {
 			String sha1 = sha1(name);
-			int characters = (int) (Math.log(space)/Math.log(2)); //characters of key space (space = 2^m)
+			int characters = (int) (Math.log(space)/Math.log(2));
 			characters = Math.min(characters, sha1.length());
 			return sha1.substring(sha1.length() - characters - 1, sha1.length());
 		}
 		
 		
 		public static int compare(String key1, String key2){
-			//float key1 = Float.parseFloat(k1);
-			//float key2 = Float.parseFloat(k2);
 			char[] k1 = key1.toCharArray();
 			char[] k2 = key2.toCharArray();
 			
@@ -48,15 +46,11 @@ public class Key {
 				byte[] result = new byte[20];
 				Arrays.fill(result,(byte)0);
 				md.update(s.getBytes());
-				//System.out.printf("Digest length %d" ,md.getDigestLength());
 				md.digest(result, 20 - md.getDigestLength()  ,md.getDigestLength());
-				
-				sha1 = bytesToHex(result);// new String(result, StandardCharsets.UTF_8 );
-				//System.out.println("Sha length = " + sha1.getBytes().length);
+				sha1 = bytesToHex(result);
 			} catch (NoSuchAlgorithmException e){
 				e.printStackTrace();
 			} catch (DigestException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			return sha1;

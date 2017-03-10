@@ -4,7 +4,7 @@ public class XRequest extends Request {
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 1L;
+	private static long serialVersionUID = 1L;
 	private String type =null;
 	private int k = 0;
 	
@@ -33,5 +33,6 @@ public class XRequest extends Request {
 	public int getK(){
 		return k;
 	}
+	
 
 }

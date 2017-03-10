@@ -4,20 +4,18 @@ import java.io.Serializable;
 import java.util.SortedMap;
 
 public class Request extends Message implements Serializable {
-	protected static long serialVersionUID = Message.serialVersionUID + 1L;
+	private  long serialVersionUID =  -1L;
 	private String operation = "";
 	private String operands = "";
 	private String command = "";
 	
 	public Request() {
 		super();
-		//setConversationId(getNextConversationId());
 	}
 	
 	public Request(String command) {
 		super();
 		setCommand(command);
-		//setConversationId(getNextConversationId());
 	}
 	
 	public void setCommand(String command){
@@ -41,7 +39,11 @@ public class Request extends Message implements Serializable {
 		return operands;
 	}
 	
-	public static long getSerialVersionID(){
+	public  long getSerialVersionID(){
 		return serialVersionUID;
+	}
+	
+	public void setSerialVersionID(long id){
+		this.serialVersionUID = id;
 	}
 }

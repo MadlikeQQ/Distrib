@@ -1,12 +1,6 @@
 package org.distrib.emulator;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketAddress;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,38 +8,34 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ThreadLocalRandom;
-
 import org.distrib.client.Client;
 import org.distrib.key.Key;
 import org.distrib.message.Request;
 import org.distrib.server.LinearServer;
-import org.distrib.server.Server;
 
 import com.sun.corba.se.impl.orbutil.concurrent.Mutex;
 
-
+/*
+ * 
+ * Spawn nodes with linearization and Chain replication
+ */
 public class Emulator2 {
 	
 	public int NUM_NODES = 10;
 	public ArrayList<LinearServer> nodes;
-	private Client[] clients;
 	public volatile int counter = 0;
 	public final int N=1048576;
 	public int maxport=4440;
 	public int coord_port;
-	private int replicas = 5;
+	private int replicas = 3;
 	public volatile long endTime ;
 	public volatile int barrier = NUM_NODES;
 	public volatile int workers = 0;
 	public Mutex printLatch = new Mutex();
-	
 	public CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
-	
+	public long startT = System.currentTimeMillis();
 	public Emulator2 ( ) {}
 	
 	public void run() throws IOException{
@@ -59,7 +49,6 @@ public class Emulator2 {
 		}
 				
 		nodes = new ArrayList<LinearServer>();
-		clients = new Client[NUM_NODES];
 		int i;
 		for (i = 0 ; i <NUM_NODES; i++ ){
 			String id = Integer.toString(i);
@@ -111,15 +100,21 @@ public class Emulator2 {
 		
 		file =  Paths.get("requests.txt");
 		reader = Files.newBufferedReader(file,charset);
-		//long tStart = System.currentTimeMillis();
-		while( (line=reader.readLine()) != null )   {
+		
+		while( (line=reader.readLine()) != null && j<=20 )   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
-			
 			Request r = new Request(line);
+			
+			r.setSerialVersionID((long) j);//for next request
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
 		}
+		
+		
+		/*
+		 * Uncomment below for interactive input to emulator
+		 */
 		
 		/////
 /*		while(true){
