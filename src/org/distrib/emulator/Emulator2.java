@@ -26,6 +26,8 @@ import org.distrib.message.Request;
 import org.distrib.server.LinearServer;
 import org.distrib.server.Server;
 
+import com.sun.corba.se.impl.orbutil.concurrent.Mutex;
+
 
 public class Emulator2 {
 	
@@ -36,9 +38,13 @@ public class Emulator2 {
 	public final int N=1048576;
 	public int maxport=4440;
 	public int coord_port;
-	private int replicas = 3;
+	private int replicas = 5;
+	public volatile long endTime ;
+	public volatile int barrier = NUM_NODES;
+	public volatile int workers = 0;
+	public Mutex printLatch = new Mutex();
 	
-	CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
+	public CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
 	
 	public Emulator2 ( ) {}
 	
@@ -86,19 +92,44 @@ public class Emulator2 {
 		
 		int j = 1;
 		Charset charset = Charset.forName("US-ASCII");
-		Path file =  Paths.get("insert.txt");
-		BufferedReader reader = Files.newBufferedReader(file,charset);
+		Path file ;
+		BufferedReader reader ;
 		String line;
-		while( (line=reader.readLine()) != null && j <=20)   {
+		
+		/*while( (line=reader.readLine()) != null )   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
 			
 			Request r = new Request("insert, " +line);
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
-		}
+		}*/
 		
 		for(int k=0; k < nodes.size(); k++){
+    		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
+    	}
+		
+		file =  Paths.get("requests.txt");
+		reader = Files.newBufferedReader(file,charset);
+		//long tStart = System.currentTimeMillis();
+		while( (line=reader.readLine()) != null )   {
+			i = (int) (Math.random() * (NUM_NODES - 1));
+			
+			Request r = new Request(line);
+			r.setSource(nodes.get(i).getLocalPort());
+			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
+			j++;
+		}
+		
+		/////
+/*		while(true){
+			long elapsed = endTime - tStart;
+			System.out.println("Total Running time " + elapsed + " throughput : " + (float)elapsed / ((j-1)*1000));		
+			}*/
+		////
+		
+		
+	/*	for(int k=0; k < nodes.size(); k++){
     		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
 		
@@ -114,7 +145,7 @@ public class Emulator2 {
 	    		tmp.setSource(nodes.get(i).getLocalPort());
 	    		new Thread( new Client("127.0.0.1", nodes.get(i).getLocalPort(),tmp)).start();
 	    	}		
-	    }
+	    }*/
 	}
 
 	public static void main(String[] args) throws IOException

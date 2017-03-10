@@ -26,6 +26,7 @@ import org.distrib.key.*;
 import org.distrib.message.Request;
 import org.distrib.message.Response;
 import org.distrib.message.XRequest;
+import org.omg.CORBA.SystemException;
 
 import com.sun.org.apache.xpath.internal.axes.SubContextList;
 
@@ -42,7 +43,6 @@ public class EventualServer extends Thread implements Runnable {
 	private static final int MIN_POOL_SIZE = 1;
 	private static final int MAX_POOL_SIZE = 200;
 	private static final int DEFAULT_ALIVE_TIME = 60000;
-	
 	private HashMap<String,Tuple<String,Integer>> mySet = null;
 	private Tuple<String,Integer> next =null;
 	private Tuple<String,Integer> previous = null;
@@ -55,6 +55,7 @@ public class EventualServer extends Thread implements Runnable {
 	private boolean running = false;
 	public ServerSocket serverSocket;
 	private CountDownLatch startSignal = new CountDownLatch(1) ;
+	private CountDownLatch emLatch ;
 	private int K=3 ;
 	private int departIdx = -1;
 	
@@ -74,6 +75,7 @@ public class EventualServer extends Thread implements Runnable {
 		this.parent = parent;
 		this.coord = false;
 		this.K = K;
+		this.emLatch = parent.latch;
 
 	}
 	
@@ -242,11 +244,11 @@ public class EventualServer extends Thread implements Runnable {
 	public ArrayList<Tuple<String, Tuple<String,Integer>>> getRightKeys(){
 		ArrayList<Tuple<String, Tuple<String,Integer>>> ret = new ArrayList<Tuple<String, Tuple<String,Integer>>>();
 		mySet.forEach((k,v) -> {
+			String keySHA = Key.sha1(k);
 			if(v.b > 0){
 				ret.add(new Tuple<String,Tuple<String,Integer>>(k,v));
 			}
-			else
-				if (Key.compare(previous.a, k) != -1){
+			else if (Key.compare(previous.a, keySHA) != -1){
 					ret.add(new Tuple<String,Tuple<String,Integer>>(k,v)); 
 				}
 		});
@@ -372,6 +374,13 @@ public class EventualServer extends Thread implements Runnable {
 	private synchronized void resetCounter(){
 		parent.counter = 0;
 	}
+	
+	private synchronized void incBarrier(){
+		parent.barrier++;
+	}
+	private synchronized void decBarrier(){
+		parent.barrier--;
+	}
 	@Override
 	public void run()
 	{	
@@ -386,11 +395,15 @@ public class EventualServer extends Thread implements Runnable {
 		
 		startSignal.countDown();
 		
+		
+		
 		while(hasToRun)
 		{
 			Socket socket = null;
 			try {
+				decBarrier();
 				socket = serverSocket.accept();
+				incBarrier();
 				DoWork w = new DoWork(socket);
 				this.workerThreadPool.submit(w);
 			} catch (IOException e) {
@@ -409,6 +422,7 @@ public class EventualServer extends Thread implements Runnable {
 	private class DoWork implements Runnable {
 		
 		Socket socket = null;
+		
 		public DoWork(Socket socket){
 			this.socket = socket;
 		}
@@ -416,7 +430,7 @@ public class EventualServer extends Thread implements Runnable {
 		/**************************** Handle Requests *****************************/
 		public void HandleRequests(Request req) throws IOException{
 			//System.out.println("received req with Serial ID " + req.getSerialVersionID());
-			int i, comp ;
+			int i, comp , src;
 			String key, value, respondPort, keySHA;
 			String operation = req.getOperation();
 			String operands = req.getOperands();
@@ -428,20 +442,24 @@ public class EventualServer extends Thread implements Runnable {
 				value = operands.substring(i+2,operands.length() );
 			//	System.out.println("Received insert <" + key + "," + value + ">");
 				keySHA = Key.sha1(key);
-				comp = Key.compare(myId, keySHA);
-
-				if(Key.between(keySHA, previous.a, myId)){
+				//comp = Key.compare(myId, keySHA);
+				result = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+				result = getSet(key);
+				
+				Tuple<String,String> Result;
+				if(Key.between(keySHA, previous.a, myId) ){
 					//Replication request
 					//System.out.println("Kappa = "  + K );
 					if(K-1 > 0){
 						XRequest xr = new XRequest("mandatory",req.getCommand());
 						xr.setK(K-1);
+						xr.setSource(port);
 						new Thread(new Client("127.0.0.1", next.b, xr)).start();
 					}
 					
 					//System.out.printf("inserting key %s in node %s", (keySHA), (myId));
-					Tuple<String,String> Result = insert(key,value,0);
-					int src = req.getSource();
+					Result = insert(key,value,0);
+					src = req.getSource();
 					Response response = new Response("insert",Result);
 					response.setDestination(src);
 					response.setSource(port);
@@ -460,7 +478,7 @@ public class EventualServer extends Thread implements Runnable {
 				keySHA = Key.sha1(key);
 				//comp = Key.compare(myId,keySHA) ;
 				result = getSet(key);
-				if( !result.isEmpty() /*Key.between(keySHA, previous.a, myId)*/ ){
+				if( !result.isEmpty() && Key.between(keySHA, previous.a, myId) ){
 					//Replication request
 					if(K-1 > 0){
 						//System.out.println("Kappa = "  + K );
@@ -471,16 +489,14 @@ public class EventualServer extends Thread implements Runnable {
 					}
 					//String resultt = 
 					delete(key);
-					if(result.get(0).b.b==0){
-						
-						int src = req.getSource();
-						Response response = new Response("delete",key);
-						response.setDestination(src);
-						response.setSource(port);
-						response.setNode(myId);
-						//System.out.println("Sendin response to node "+ src+ "for key " + result);
-						//send response to client
-						new Thread(new Client("127.0.0.1", src, response)).start();}
+					src = req.getSource();
+					Response response = new Response("delete",key);
+					response.setDestination(src);
+					response.setSource(port);
+					response.setNode(myId);
+					//System.out.println("Sendin response to node "+ src+ "for key " + result);
+					//send response to client
+					new Thread(new Client("127.0.0.1", src, response)).start();
 				}
 				else if(!Key.between(keySHA, previous.a, myId)) {
 					System.out.println("Forwarding delete to next and previous is "+ previous.b);
@@ -496,7 +512,7 @@ public class EventualServer extends Thread implements Runnable {
 					incCounter();
 					if(parent.counter <= parent.NUM_NODES) {
 						result = getSet("*");//new ArrayList<Tuple<String,String>>();
-						int src = req.getSource();
+						src = req.getSource();
 						Response response = new Response("query",result);
 						response.setDestination(src);
 						response.setSource(port);
@@ -513,8 +529,8 @@ public class EventualServer extends Thread implements Runnable {
 					break;
 				}
 				result = getSet(key);
-				if(!result.isEmpty()){
-					int src = req.getSource();
+				if(!result.isEmpty() ){
+					src = req.getSource();
 					Response response = new Response("query",result);
 					response.setDestination(src);
 					response.setSource(port);
@@ -523,7 +539,7 @@ public class EventualServer extends Thread implements Runnable {
 					//	System.out.println("Sending query result to port "+ src);
 					new Thread(new Client("127.0.0.1", src,response)).start();
 				}
-				else {
+				else if (!Key.between(keySHA, previous.a, myId)) {
 				//	System.out.println("Forward the query to next port "+ next.b);
 					new Thread( new Client("127.0.0.1", next.b, req)).start();
 					//send delete command to previous 
@@ -581,36 +597,22 @@ public class EventualServer extends Thread implements Runnable {
 						value = operands.substring(i+2,operands.length() );
 						keySHA = Key.sha1(key);
 						Tuple<String,String> ires = insert(key,value, K - k);
-						src = xreq.getSource();				
 						//Replica
 						xreq.setK(k-1);
+						xreq.setDestination(next.b);
 						new Thread(new Client("127.0.0.1", next.b, xreq)).start();
 					}
 					break;
 				case "delete":
-		 			k = xreq.getK();
-		 			key=operands.substring(1);
-		 			ArrayList<Tuple<String,Tuple<String,Integer>>> result = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+					k = xreq.getK();
+					key=operands.substring(1);
+					ArrayList<Tuple<String,Tuple<String,Integer>>> result = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
 					result = getSet(key);
-					if(k-1 >= 0 && !result.isEmpty()){
+					if(k-1 >= 0){
 						String dres = delete(key);
 						src = xreq.getSource();
 						//Replica
 						xreq.setK(k-1);
-						new Thread(new Client("127.0.0.1", next.b, xreq)).start();
-						if(result.get(0).b.b==0){
-							
-							src = xreq.getSource();
-							response = new Response("delete",key);
-							response.setDestination(src);
-							response.setSource(port);
-							response.setNode(myId);
-							System.out.println("Sendin response to node "+ src+ "for key " + result);
-							//send response to client
-							new Thread(new Client("127.0.0.1", src, response)).start();
-						}
-					}
-					else if(result.isEmpty() && (k-1)>=0){
 						new Thread(new Client("127.0.0.1", next.b, xreq)).start();
 					}
 					break;
@@ -666,30 +668,45 @@ public class EventualServer extends Thread implements Runnable {
 				}
 			}
 	}
-		
-		private void HandleResponse(Response response){
-			String operation = response.getOperation();
-			Object payload = response.getPayload();
-			System.out.println("*****Reponse******");
+		private void printMessage(Response response){
+			System.out.println("*****Reponse " + response.getOperation() + "******");
 			System.out.println("From: " + (response.getNode()));
 			System.out.println("To  : " + (myId));
 			System.out.println("Message: ");
+		}
+		
+
+		private void HandleResponse(Response response){
+			String operation = response.getOperation();
+			Object payload = response.getPayload();
+			//System.out.println("handleresponse");
+			try {
+				parent.printLatch.acquire();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			switch (operation){
 			case "query":
+				printMessage( response);
 				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
 				//System.out.println("Data from node " + response.getNode()+ ":");
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
-				
+				System.out.println();
 				break;
 			case "insert":
+				printMessage( response);
 				Tuple<String,String> insrt = (Tuple<String,String>)payload;
 				System.out.println("Inserted <" + insrt.a + "," + insrt.b + ">");
+				System.out.println();
 				break;
 			case "delete":
+				printMessage( response);
 				String dlt = payload.toString();
 				System.out.println("Deleted key "+ dlt );
+				System.out.println();
 			break;
 			case "insertbatch":
 				//System.out.println("Into REsponse - insertbatch");
@@ -744,15 +761,34 @@ public class EventualServer extends Thread implements Runnable {
 				}
 				break;
 			}
-			System.out.println();
+			
+			parent.printLatch.release();
+			
 		}
 		
 /*********************************** End Handle Requests/Responses ***************************/		
 		
 		
 		
+		private synchronized void incWorkers()
+		{
+			parent.workers++;
+		}
+		
+		private synchronized void decWorkers()
+		{
+			parent.workers--;
+		}
+		
+		private synchronized void setMaxTime(long current){
+			long t = parent.endTime; 
+			parent.endTime = (current > t )?current:t;
+		}
+		 
 		 
 		public void run(){
+			incWorkers();
+			
 			ObjectInputStream in = null;
 			try{
 				in = new ObjectInputStream( socket.getInputStream());
@@ -768,13 +804,13 @@ public class EventualServer extends Thread implements Runnable {
 				else if(messageObj instanceof Response){
 					HandleResponse((Response) messageObj);
 				}
-
-
 			//	in = new BufferedReader(inS);
 			} catch (IOException e) {
+				decWorkers();
 				// TODO Auto-generated catch blockσ
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
+				decWorkers();
 			}
 			finally{//close resources
 				try {
@@ -785,6 +821,8 @@ public class EventualServer extends Thread implements Runnable {
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 				}
+				setMaxTime(System.currentTimeMillis());
+				decWorkers();
 			}
 
 		}

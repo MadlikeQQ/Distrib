@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Timer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,6 +27,8 @@ import org.distrib.message.Request;
 import org.distrib.server.EventualServer;
 import org.distrib.server.Server;
 
+import com.sun.corba.se.impl.orbutil.concurrent.Mutex;
+
 
 public class Emulator {
 	
@@ -34,13 +37,15 @@ public class Emulator {
 	public ArrayList<EventualServer> nodes;
 	private Client[] clients;
 	public volatile int counter = 0;
+	public volatile int barrier = NUM_NODES;
+	public volatile int workers = 0;
 	public final int N=1048576;
 	public int maxport=4440;
 	public int coord_port;
 	private int replicas = 3;
-	
-	CountDownLatch startSignal = new CountDownLatch(NUM_NODES); 
-	
+	public volatile long endTime ;
+	public CountDownLatch latch = new CountDownLatch(NUM_NODES); 
+	public Mutex printLatch = new Mutex();
 	public Emulator ( ) {}
 	
 	public void run() throws IOException{
@@ -60,7 +65,7 @@ public class Emulator {
 		int i;
 		for (i = 0 ; i <NUM_NODES; i++ ){
 			String id = Integer.toString(i);
-			EventualServer node = new EventualServer(Key.sha1(id),port,this, replicas);
+			EventualServer node = new EventualServer(Key.sha1(id),port,this, replicas );
 			nodes.add(node);
 			maxport=port;
 			port++;
@@ -88,22 +93,50 @@ public class Emulator {
 		nodes.get(0).coord=true;
 		coord_port=nodes.get(0).getLocalPort();
 		
-		int j = 1;
+		
 		Charset charset = Charset.forName("US-ASCII");
-		Path file =  Paths.get("insert.txt");
-		BufferedReader reader = Files.newBufferedReader(file,charset);
+		Path file ;
+		BufferedReader reader ;
 		String line;
-		while( (line=reader.readLine()) != null && j <=20)   {
+		
+		for(int k=0; k < nodes.size(); k++){
+    		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
+    	}
+
+		
+		int j = 1;
+		file =  Paths.get("requests.txt");
+		reader = Files.newBufferedReader(file,charset);
+		while( (line=reader.readLine()) != null )   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
-			Request r = new Request("insert, " +line);
+			Request r = new Request(line);
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
 		}
+		/////
+		/*while(true){
+			long elapsed = endTime - tStart;
+			System.out.println("Total Running time " + elapsed + "throughput : " + (float)elapsed / ((j-1)*1000));		}
+		////
+*/		
+		
+		
+		
+		//long elapsed = endTime - tStart;
+		//System.out.println("Total Running time " + elapsed + "throughput : " + (float)elapsed / ((j-1)*1000));
+		
 
-		for(int k=0; k < nodes.size(); k++){
+		
+		//END EMULATION
+		
+		/*	for(int k=0; k < nodes.size(); k++){
     		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
+		
+		
+		
+		
 	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
@@ -120,7 +153,7 @@ public class Emulator {
 	    	}
 	    		
 	    }
-		
+		*/
 	}
 
 	public static void main(String[] args) throws IOException
