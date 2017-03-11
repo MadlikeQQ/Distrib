@@ -91,13 +91,14 @@ public class LinearServer extends Server implements Runnable {
 	}
 	
 	private void createWorkerThreadPool(){
-		this.workerThreadPool = Executors.newFixedThreadPool(MAX_POOL_SIZE);
-				/*new ThreadPoolExecutor(
+		this.workerThreadPool =
+				//Executors.newFixedThreadPool(MAX_POOL_SIZE);
+				new ThreadPoolExecutor(
 				MIN_POOL_SIZE, 
 				MAX_POOL_SIZE, 
 				DEFAULT_ALIVE_TIME, 
 				TimeUnit.MILLISECONDS, 
-				new ArrayBlockingQueue<Runnable>(10)) ;*/
+				new ArrayBlockingQueue<Runnable>(10)) ;
 	}
 	
 	private void addShutdownHook() {
@@ -413,6 +414,7 @@ public class LinearServer extends Server implements Runnable {
 				keySHA = Key.sha1(key);
 
 				if(Key.between(keySHA, previous.a, myId)){
+					Tuple<String,String>res = insert(key,value,0);
 					//Replication request
 					if(K-1 > 0){
 						XRequest xr = new XRequest("mandatory",req.getCommand());//(XRequest) req;
@@ -421,8 +423,20 @@ public class LinearServer extends Server implements Runnable {
 						xr.setDestination(next.b);
 						xr.setSerialVersionID(req.getSerialVersionID());
 						new Thread(new Client("127.0.0.1", next.b, xr)).start();
-					}	
-					insert(key,value,0);	
+					}
+					else{
+						int src = req.getSource();
+						Response response = new Response("insert",res);
+						response.setDestination(src);
+						response.setSource(port);
+						response.setNode(myId);
+						response.setCommand(req.getCommand());
+						response.setOriginalRequestID(req.getSerialVersionID());
+						response.setTimeOriginated(System.currentTimeMillis() - parent.startT);
+						//send response to client
+						new Thread(new Client("127.0.0.1", src, response)).start();
+					}
+						
 				}
 				else {
 					new Thread( new Client("127.0.0.1", next.b, req)).start();
@@ -444,7 +458,18 @@ public class LinearServer extends Server implements Runnable {
 						xr.setSerialVersionID(req.getSerialVersionID());
 						new Thread(new Client("127.0.0.1", next.b, xr)).start();
 					}
-					
+					else{
+						int src = req.getSource();
+						Response response = new Response("delete",key);
+						response.setDestination(src);
+						response.setSource(port);
+						response.setNode(myId);
+						response.setCommand(req.getCommand());
+						response.setOriginalRequestID(req.getSerialVersionID());
+						response.setTimeOriginated(System.currentTimeMillis() - parent.startT);
+						//send response to client
+						new Thread(new Client("127.0.0.1", src, response)).start();
+					}
 					delete(key);
 				}
 				else  {
@@ -455,6 +480,7 @@ public class LinearServer extends Server implements Runnable {
 				key =  operands.substring(1) ;
 				keySHA = Key.sha1(key);
 				if(key.equals("*")){
+					incCounter();
 					if(parent.counter <= parent.NUM_NODES) {
 						result = getSet("*");
 						int src = req.getSource();
@@ -464,6 +490,7 @@ public class LinearServer extends Server implements Runnable {
 						response.setNode(myId);
 						response.setCommand(req.getCommand());
 						response.setOriginalRequestID(req.getSerialVersionID());
+						response.setTimeOriginated(System.currentTimeMillis() - parent.startT);
 						//send response to client
 						new Thread(new Client("127.0.0.1", src, response)).start();
 						//send message to next
@@ -483,6 +510,18 @@ public class LinearServer extends Server implements Runnable {
 							xreq.setDestination(next.b);
 							xreq.setSerialVersionID(req.getSerialVersionID());
 							new Thread(new Client("127.0.0.1",next.b,xreq)).start();
+						}
+						else{
+							int src = req.getSource();
+							Response response = new Response("query",result);
+							response.setDestination(src);
+							response.setSource(port);
+							response.setNode(myId);
+							response.setCommand(req.getCommand());
+							response.setOriginalRequestID(req.getSerialVersionID());
+							response.setTimeOriginated(System.currentTimeMillis() - parent.startT);
+							//send response to client
+							new Thread(new Client("127.0.0.1", src, response)).start();
 						}
 				}
 				else {
@@ -662,18 +701,18 @@ public class LinearServer extends Server implements Runnable {
 			}
 			switch (operation){
 			case "query":
-				printMessage(response);
+/*				printMessage(response);
 				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
-				System.out.println();
+				System.out.println();*/
 				break;
 			case "insert":
-				printMessage(response);
+/*				printMessage(response);
 				Tuple<String,String> insrt = (Tuple<String,String>)payload;
 				System.out.println("Inserted <" + insrt.a + "," + insrt.b + ">");
-				System.out.println();
+				System.out.println();*/
 				break;
 			case "delete":
 				printMessage(response);
@@ -789,6 +828,7 @@ public class LinearServer extends Server implements Runnable {
 					e.printStackTrace();
 
 				}
+				setMaxTime(System.currentTimeMillis());
 			}
 
 		}

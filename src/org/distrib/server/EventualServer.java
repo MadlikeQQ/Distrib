@@ -36,7 +36,7 @@ public class EventualServer extends Thread implements Runnable {
 	private Tuple<String,Integer> previous = null;
 	private int port = 0;
 	public Emulator parent = null;
-	private ExecutorService workerThreadPool;
+	private ThreadPoolExecutor workerThreadPool;
 	private boolean hasToRun = true;
 	private boolean running = false;
 	public ServerSocket serverSocket;
@@ -89,13 +89,14 @@ public class EventualServer extends Thread implements Runnable {
 	}
 	
 	private void createWorkerThreadPool(){
-		this.workerThreadPool = Executors.newFixedThreadPool(MAX_POOL_SIZE);
-				/*new ThreadPoolExecutor(
+		this.workerThreadPool = 
+				new ThreadPoolExecutor(
 				MIN_POOL_SIZE, 
 				MAX_POOL_SIZE, 
 				DEFAULT_ALIVE_TIME, 
 				TimeUnit.MILLISECONDS, 
-				new ArrayBlockingQueue<Runnable>(10)) ;*/
+				new ArrayBlockingQueue<Runnable>(10)) ;
+				//Executors.newFixedThreadPool(MAX_POOL_SIZE);
 	}
 	
 	private void addShutdownHook() {
@@ -385,12 +386,12 @@ public class EventualServer extends Thread implements Runnable {
 		{
 			Socket socket = null;
 			try {
-				decBarrier();
+			//	decBarrier();
 				socket = serverSocket.accept();
-				incBarrier();
+			//	incBarrier();
 				DoWork w = new DoWork(socket);
 				this.workerThreadPool.submit(w);
-			} catch (IOException e) {
+			} catch (IOException  e) {
 			} 
 			//new Thread(new DoWork(socket)).start();
 			
@@ -673,18 +674,18 @@ public class EventualServer extends Thread implements Runnable {
 			}
 			switch (operation){
 			case "query":
-				printMessage( response);
+/*				printMessage( response);
 				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
-				System.out.println();
+				System.out.println();*/
 				break;
 			case "insert":
-				printMessage( response);
+/*				printMessage( response);
 				Tuple<String,String> insrt = (Tuple<String,String>)payload;
 				System.out.println("Inserted <" + insrt.a + "," + insrt.b + ">");
-				System.out.println();
+				System.out.println();*/
 				break;
 			case "delete":
 				printMessage( response);
@@ -768,7 +769,7 @@ public class EventualServer extends Thread implements Runnable {
 		 
 		 
 		public void run(){
-			incWorkers();
+			//incWorkers();
 			
 			ObjectInputStream in = null;
 			try{
@@ -798,7 +799,9 @@ public class EventualServer extends Thread implements Runnable {
 				} catch (IOException e) {
 				}
 				setMaxTime(System.currentTimeMillis());
-				decWorkers();
+				//decWorkers();
+			//	if(workerThreadPool.getActiveCount() == 0) 
+				//	parent.sem.release();
 			}
 
 		}

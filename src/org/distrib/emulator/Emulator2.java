@@ -1,6 +1,7 @@
 package org.distrib.emulator;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +30,7 @@ public class Emulator2 {
 	public final int N=1048576;
 	public int maxport=4440;
 	public int coord_port;
-	private int replicas = 3;
+	private int replicas = 5;
 	public volatile long endTime ;
 	public volatile int barrier = NUM_NODES;
 	public volatile int workers = 0;
@@ -81,37 +82,43 @@ public class Emulator2 {
 		
 		int j = 1;
 		Charset charset = Charset.forName("US-ASCII");
-		Path file ;
-		BufferedReader reader ;
+		Path file = Paths.get("insert.txt"); ;
+		BufferedReader reader = Files.newBufferedReader(file,charset);;
 		String line;
 		
-		/*while( (line=reader.readLine()) != null )   {
+		while( (line=reader.readLine()) != null )   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
 			
 			Request r = new Request("insert, " +line);
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
-		}*/
-		
+		}
 		for(int k=0; k < nodes.size(); k++){
     		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
     	}
 		
-		file =  Paths.get("requests.txt");
+
+		startT = System.currentTimeMillis();
+		file =  Paths.get("query.txt");
 		reader = Files.newBufferedReader(file,charset);
-		
-		while( (line=reader.readLine()) != null && j<=20 )   {
+		j = 1;
+		while( (line=reader.readLine()) != null )   {
 			i = (int) (Math.random() * (NUM_NODES - 1));
-			Request r = new Request(line);
-			
+			Request r = new Request("query, " + line);
 			r.setSerialVersionID((long) j);//for next request
 			r.setSource(nodes.get(i).getLocalPort());
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
 		}
 		
-		
+		float elapsed;
+		while(true){
+			
+			elapsed = (float) (endTime - startT);
+			System.out.println("Total Running time " + elapsed + " (time/op): " + (float)elapsed / ((j-1)*1000));
+			//System.out.println((float) (endTime- startT) / ((j-1) * 1000 ));
+		}
 		/*
 		 * Uncomment below for interactive input to emulator
 		 */
@@ -124,11 +131,8 @@ public class Emulator2 {
 		////
 		
 		
-	/*	for(int k=0; k < nodes.size(); k++){
-    		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
-    	}
-		
-	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+/*	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
 	    	Request tmp = new Request(input);
