@@ -309,7 +309,6 @@ public class LinearServer extends Server implements Runnable {
 			//set the next node as coordinator
 			parent.nodes.get(i+1).coord = true;
 			parent.coord_port = parent.nodes.get(i+1).getLocalPort();
-		//	System.out.println("Node with port " + parent.nodes.get(i+1).getLocalPort() +" has coord val "+ parent.nodes.get(i+1).coord);
 			coord =false;
 			hasToRun =false;
 		}
@@ -365,7 +364,6 @@ public class LinearServer extends Server implements Runnable {
 		try {
 			serverSocket = new ServerSocket(this.port);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 		}
 		createWorkerThreadPool();
 		addShutdownHook();
@@ -379,7 +377,6 @@ public class LinearServer extends Server implements Runnable {
 				socket = serverSocket.accept();
 				DoWork w = new DoWork(socket);
 				this.workerThreadPool.submit(w);
-				//new Thread(new DoWork(socket)).start();
 			} catch (IOException e) {
 			} 
 			
@@ -646,7 +643,6 @@ public class LinearServer extends Server implements Runnable {
 				}
 		}
 			else if(type.equals("depart")){
-				//System.out.println("depard response");
 				operation = xreq.getCommand();
 				switch(operation){
 				case "redistribute":
@@ -701,18 +697,18 @@ public class LinearServer extends Server implements Runnable {
 			}
 			switch (operation){
 			case "query":
-/*				printMessage(response);
+				printMessage(response);
 				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
-				System.out.println();*/
+				System.out.println();
 				break;
 			case "insert":
-/*				printMessage(response);
+				printMessage(response);
 				Tuple<String,String> insrt = (Tuple<String,String>)payload;
 				System.out.println("Inserted <" + insrt.a + "," + insrt.b + ">");
-				System.out.println();*/
+				System.out.println();
 				break;
 			case "delete":
 				printMessage(response);
@@ -797,7 +793,6 @@ public class LinearServer extends Server implements Runnable {
 				in = new ObjectInputStream( socket.getInputStream());
 				Object messageObj =  null;
 				messageObj = in.readObject();
-				//System.out.println(messageObj.getClass() + "i have port "+ port);
 				if( messageObj instanceof XRequest){
 					HandleXRequests((XRequest)messageObj);
 				}
@@ -807,14 +802,9 @@ public class LinearServer extends Server implements Runnable {
 				else if(messageObj instanceof Response){
 					HandleResponse((Response) messageObj);
 				}
-
-
-			//	in = new BufferedReader(inS);
 			} catch (IOException e) {
 				e.printStackTrace();
-				// TODO Auto-generated catch blockσ
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			finally{//close resources
@@ -824,7 +814,6 @@ public class LinearServer extends Server implements Runnable {
 					if(socket != null)
 						socket.close();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 
 				}

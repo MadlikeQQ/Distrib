@@ -54,16 +54,7 @@ public class Emulator {
 	public long startT = System.currentTimeMillis();
 
 	public void run() throws IOException{
-		int port = 4440;
-		MessageDigest md = null; 
-		try {
-			md = MessageDigest.getInstance("SHA-1");
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		
+		int port = 4440;		
 		
 		nodes = new ArrayList<EventualServer>();
 		clients = new Client[NUM_NODES];
@@ -120,7 +111,7 @@ public class Emulator {
 			j++;
 		}
 
-		startT = System.currentTimeMillis();
+	//	startT = System.currentTimeMillis();
 		j = 1;
 		file =  Paths.get("query.txt");
 		reader = Files.newBufferedReader(file,charset);
@@ -132,40 +123,28 @@ public class Emulator {
 			new Thread(new Client("127.0.0.1",nodes.get(i).getLocalPort(),r)).start();
 			j++;
 		}
-		float elapsed;
+	
+		
+		
+		
+		/*	float elapsed;
 		while(true){
 			elapsed = (float) (endTime - startT);
 			System.out.println("Total Running time " + elapsed + " (time/op): " + (float)elapsed / ((j-1)*1000));
-			//System.out.println((float) (endTime- startT) / ((j-1) * 1000 ));
-		}
+		}*/
+	
+		
+		
 		/*
 		 * Uncomment for interactive input to emulator
 		 * 
 		 */
-		/////
-		/*while(true){
-			long elapsed = endTime - tStart;
-			System.out.println("Total Running time " + elapsed + "throughput : " + (float)elapsed / ((j-1)*1000));		}
-		////
-*/		
-		
-		
-		
-		//long elapsed = endTime - tStart;
-		//System.out.println("Total Running time " + elapsed + "throughput : " + (float)elapsed / ((j-1)*1000));
-		
 
 		
 		//END EMULATION
 		
-		/*	for(int k=0; k < nodes.size(); k++){
-    		System.out.println("Node: " + ((nodes.get(k).myId)) +" with port: "+ nodes.get(k).getLocalPort());
-    	}
 		
-		*/
-		
-		
-	   /* BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
 	    	Request tmp = new Request(input);
@@ -177,10 +156,11 @@ public class Emulator {
 	    		// we randomly choose a node to forward the request
 	    		i = (int) (Math.random() * (NUM_NODES - 1));
 	    		tmp.setSource(nodes.get(i).getLocalPort());
+	    		tmp.setSerialVersionID(j);
 	    		new Thread( new Client("127.0.0.1", nodes.get(i).getLocalPort(),tmp)).start();
 	    	}
-	    		
-	    }*/
+	    	j++;	
+	    }
 		
 	}
 

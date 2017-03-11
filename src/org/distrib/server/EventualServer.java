@@ -83,7 +83,6 @@ public class EventualServer extends Thread implements Runnable {
 		try {
 			this.serverSocket.setSoTimeout(t);
 		} catch (SocketException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -96,7 +95,6 @@ public class EventualServer extends Thread implements Runnable {
 				DEFAULT_ALIVE_TIME, 
 				TimeUnit.MILLISECONDS, 
 				new ArrayBlockingQueue<Runnable>(10)) ;
-				//Executors.newFixedThreadPool(MAX_POOL_SIZE);
 	}
 	
 	private void addShutdownHook() {
@@ -302,7 +300,6 @@ public class EventualServer extends Thread implements Runnable {
 		return xreq;
 	} 
 	public void departPointers(int i){
-		//System.out.println("departPointers");
 		parent.NUM_NODES--;
 		//We must remove the first node from the list
 		if(i==0){
@@ -310,7 +307,6 @@ public class EventualServer extends Thread implements Runnable {
 			//set the next node as coordinator
 			parent.nodes.get(i+1).coord = true;
 			parent.coord_port = parent.nodes.get(i+1).getLocalPort();
-		//	System.out.println("Node with port " + parent.nodes.get(i+1).getLocalPort() +" has coord val "+ parent.nodes.get(i+1).coord);
 			coord =false;
 			hasToRun =false;
 		}
@@ -325,7 +321,6 @@ public class EventualServer extends Thread implements Runnable {
 			parent.nodes.get(i+1).previous=parent.nodes.get(i).previous;
 			
 		}
-		//System.out.println("Removing " + i);
 		parent.nodes.get(i).queueShutdown();
 		Request shutdown = null;
 		//send msg to node for termination
@@ -341,7 +336,6 @@ public class EventualServer extends Thread implements Runnable {
 				departReq.setSource(port);
 				departReq.setDestination(parent.nodes.get(i).port);
 				this.departIdx = i;
-				//System.out.println("depart sending request to port " + this.next.b + "with final destination " + parent.nodes.get(i).port);
 				break;
 		}
 	}
@@ -373,7 +367,6 @@ public class EventualServer extends Thread implements Runnable {
 		try {
 			serverSocket = new ServerSocket(this.port);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 		}
 		createWorkerThreadPool();
 		addShutdownHook();
@@ -386,15 +379,11 @@ public class EventualServer extends Thread implements Runnable {
 		{
 			Socket socket = null;
 			try {
-			//	decBarrier();
 				socket = serverSocket.accept();
-			//	incBarrier();
 				DoWork w = new DoWork(socket);
 				this.workerThreadPool.submit(w);
 			} catch (IOException  e) {
 			} 
-			//new Thread(new DoWork(socket)).start();
-			
 		}
 		System.out.println("Node "+ myId + " shutting down gracefully");
 		shutdown();
@@ -414,7 +403,6 @@ public class EventualServer extends Thread implements Runnable {
 
 		/**************************** Handle Requests *****************************/
 		public void HandleRequests(Request req) throws IOException{
-			//System.out.println("received req with Serial ID " + req.getSerialVersionID());
 			int i, comp , src;
 			String key, value, keySHA;
 			String operation = req.getOperation();
@@ -492,7 +480,7 @@ public class EventualServer extends Thread implements Runnable {
 				if(key.equals("*")){
 					incCounter();
 					if(parent.counter <= parent.NUM_NODES) {
-						result = getSet("*");//new ArrayList<Tuple<String,String>>();
+						result = getSet("*");
 						src = req.getSource();
 						Response response = new Response("query",result);
 						response.setDestination(src);
@@ -674,18 +662,18 @@ public class EventualServer extends Thread implements Runnable {
 			}
 			switch (operation){
 			case "query":
-/*				printMessage( response);
+				printMessage( response);
 				ArrayList<Tuple<String,Tuple<String,Integer>>> pld = (ArrayList<Tuple<String,Tuple<String,Integer>>>)payload;
 				for(int i=0; i<pld.size(); i++){
 					System.out.println(pld.get(i).a + ","+pld.get(i).b.a + "," + pld.get(i).b.b);
 				}
-				System.out.println();*/
+				System.out.println();
 				break;
 			case "insert":
-/*				printMessage( response);
+				printMessage( response);
 				Tuple<String,String> insrt = (Tuple<String,String>)payload;
 				System.out.println("Inserted <" + insrt.a + "," + insrt.b + ">");
-				System.out.println();*/
+				System.out.println();
 				break;
 			case "delete":
 				printMessage( response);
@@ -768,9 +756,7 @@ public class EventualServer extends Thread implements Runnable {
 		}
 		 
 		 
-		public void run(){
-			//incWorkers();
-			
+		public void run(){			
 			ObjectInputStream in = null;
 			try{
 				in = new ObjectInputStream( socket.getInputStream());
@@ -799,9 +785,6 @@ public class EventualServer extends Thread implements Runnable {
 				} catch (IOException e) {
 				}
 				setMaxTime(System.currentTimeMillis());
-				//decWorkers();
-			//	if(workerThreadPool.getActiveCount() == 0) 
-				//	parent.sem.release();
 			}
 
 		}

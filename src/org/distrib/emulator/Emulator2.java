@@ -41,14 +41,7 @@ public class Emulator2 {
 	
 	public void run() throws IOException{
 		int port = 4440;
-		MessageDigest md = null; 
-		try {
-			md = MessageDigest.getInstance("SHA-1");
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-				
+		
 		nodes = new ArrayList<LinearServer>();
 		int i;
 		for (i = 0 ; i <NUM_NODES; i++ ){
@@ -99,7 +92,7 @@ public class Emulator2 {
     	}
 		
 
-		startT = System.currentTimeMillis();
+	//	startT = System.currentTimeMillis();
 		file =  Paths.get("query.txt");
 		reader = Files.newBufferedReader(file,charset);
 		j = 1;
@@ -112,27 +105,22 @@ public class Emulator2 {
 			j++;
 		}
 		
-		float elapsed;
+	/*	float elapsed;
 		while(true){
 			
 			elapsed = (float) (endTime - startT);
 			System.out.println("Total Running time " + elapsed + " (time/op): " + (float)elapsed / ((j-1)*1000));
 			//System.out.println((float) (endTime- startT) / ((j-1) * 1000 ));
-		}
+		}*/
+		
+		
+		
 		/*
 		 * Uncomment below for interactive input to emulator
 		 */
 		
-		/////
-/*		while(true){
-			long elapsed = endTime - tStart;
-			System.out.println("Total Running time " + elapsed + " throughput : " + (float)elapsed / ((j-1)*1000));		
-			}*/
-		////
-		
-		
 
-/*	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+	    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String input;
 	    while((input = br.readLine()) != null){
 	    	Request tmp = new Request(input);
@@ -142,9 +130,11 @@ public class Emulator2 {
 	    	else{
 	    		i = (int) (Math.random() * (NUM_NODES - 1));
 	    		tmp.setSource(nodes.get(i).getLocalPort());
+	    		tmp.setSerialVersionID(j);
 	    		new Thread( new Client("127.0.0.1", nodes.get(i).getLocalPort(),tmp)).start();
 	    	}		
-	    }*/
+	    	j++;
+	    }
 	}
 
 	public static void main(String[] args) throws IOException

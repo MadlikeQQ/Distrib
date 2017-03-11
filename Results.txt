@@ -1,92 +1,38 @@
-EVENUTAL (WR)
-
-K = 1
-Total Running time 1606.0 (time/op): 0.003212
-Total Running time 1506.0 (time/op): 0.003012
-Total Running time 1915.0 (time/op): 0.00383
-Total Running time 1499.0 (time/op): 0.002998
-Total Running time 1632.0 (time/op): 0.003264
-
-K = 3
-Total Running time 2008.0 (time/op): 0.004016
-Total Running time 2627.0 (time/op): 0.005254
-Total Running time 2048.0 (time/op): 0.004096
-Total Running time 2962.0 (time/op): 0.005924
-Total Running time 2410.0 (time/op): 0.00482
-
-K = 5
-Total Running time 3087.0 (time/op): 0.006174
-Total Running time 3681.0 (time/op): 0.007362
-Total Running time 3294.0 (time/op): 0.006588
-Total Running time 2957.0 (time/op): 0.005914
-Total Running time 3035.0 (time/op): 0.00607
-
-EVENUTAL (RD)
-
-K = 1
-Total Running time 1062.0 (time/op): 0.002124
-Total Running time 1003.0 (time/op): 0.002006
-Total Running time 1246.0 (time/op): 0.002492
-Total Running time 1644.0 (time/op): 0.003288
-Total Running time 1422.0 (time/op): 0.002844
-
-K = 3
-Total Running time 791.0 (time/op): 0.001582
-Total Running time 1308.0 (time/op): 0.002616
-Total Running time 1085.0 (time/op): 0.00217
-Total Running time 1354.0 (time/op): 0.002708
-Total Running time 1201.0 (time/op): 0.002402
-
-K = 5
-Total Running time 1016.0 (time/op): 0.002032
-Total Running time 1406.0 (time/op): 0.002812
-Total Running time 1192.0 (time/op): 0.002384
-Total Running time 1097.0 (time/op): 0.002194
-Total Running time 1207.0 (time/op): 0.002414
-
-LINEAR(WR)
-
-K = 1
-Total Running time 1689.0 (time/op): 0.003378
-Total Running time 1598.0 (time/op): 0.003196
-Total Running time 1397.0 (time/op): 0.002794
-Total Running time 1565.0 (time/op): 0.00313
-Total Running time 1429.0 (time/op): 0.002858
-
-K = 3
-Total Running time 1878.0 (time/op): 0.003756
-Total Running time 2122.0 (time/op): 0.004244
-Total Running time 2367.0 (time/op): 0.004734
-Total Running time 2166.0 (time/op): 0.004332
-Total Running time 1929.0 (time/op): 0.003858
-
-K = 5
-Total Running time 2763.0 (time/op): 0.005526
-Total Running time 3786.0 (time/op): 0.007572
-Total Running time 3015.0 (time/op): 0.00603
-Total Running time 2571.0 (time/op): 0.005142
-Total Running time 3392.0 (time/op): 0.006784
-
-LINEAR(RD)
-
-K = 1
-Total Running time 1076.0 (time/op): 0.002152
-Total Running time 1030.0 (time/op): 0.00206
-Total Running time 1021.0 (time/op): 0.002042
-Total Running time 996.0 (time/op): 0.001992
-Total Running time 1157.0 (time/op): 0.002314
-
-K = 3
-Total Running time 1256.0 (time/op): 0.002512
-Total Running time 1256.0 (time/op): 0.002512
-Total Running time 1387.0 (time/op): 0.002774
-Total Running time 1405.0 (time/op): 0.00281
-Total Running time 1572.0 (time/op): 0.003144
-
-K = 5
-Total Running time 1768.0 (time/op): 0.003536
-Total Running time 2653.0 (time/op): 0.005306
-Total Running time 1905.0 (time/op): 0.00381
-Total Running time 1598.0 (time/op): 0.003196
-Total Running time 1873.0 (time/op): 0.003746
-Total Running time 2694.0 (time/op): 0.005388
+eventual wr
+K 1 N 5
+Total Running time 1606 (time/op): 0.003212
+Total Running time 1506 (time/op): 0.003012
+Total Running time 1915 (time/op): 0.00383
+Total Running time 1499 (time/op): 0.002998
+Total Running time 1632 (time/op): 0.003264
+K 3 N 5
+Total Running time 2008 (time/op): 0.004016
+Total Running time 2627 (time/op): 0.005254
+Total Running time 2048 (time/op): 0.004096
+Total Running time 2962 (time/op): 0.005924
+Total Running time 2410 (time/op): 0.00482
+K 5 N 5
+Total Running time 3087 (time/op): 0.006174
+Total Running time 3681 (time/op): 0.007362
+Total Running time 3294 (time/op): 0.006588
+Total Running time 2957 (time/op): 0.005914
+Total Running time 3035 (time/op): 0.00607
+eventual rd
+K 1 N 5
+Total Running time 1062 (time/op): 0.002124
+Total Running time 1003 (time/op): 0.002006
+Total Running time 1246 (time/op): 0.002492
+Total Running time 1644 (time/op): 0.003288
+Total Running time 1422 (time/op): 0.002844
+K 3 N 5
+Total Running time 791 (time/op): 0.001582
+Total Running time 1308 (time/op): 0.002616
+Total Running time 1085 (time/op): 0.00217
+Total Running time 1354 (time/op): 0.002708
+Total Running time 1201 (time/op): 0.002402
+K 5 N 5
+Total Running time 1016 (time/op): 0.002032
+Total Running time 1406 (time/op): 0.002812
+Total Running time 1192 (time/op): 0.002384
+Total Running time 1097 (time/op): 0.002194
+Total Running time 1207 (time/op): 0.002414
