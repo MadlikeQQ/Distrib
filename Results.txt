@@ -1,0 +1,38 @@
+eventual wr
+K 1 N 5
+Total Running time 1606 (time/op): 0.003212
+Total Running time 1506 (time/op): 0.003012
+Total Running time 1915 (time/op): 0.00383
+Total Running time 1499 (time/op): 0.002998
+Total Running time 1632 (time/op): 0.003264
+K 3 N 5
+Total Running time 2008 (time/op): 0.004016
+Total Running time 2627 (time/op): 0.005254
+Total Running time 2048 (time/op): 0.004096
+Total Running time 2962 (time/op): 0.005924
+Total Running time 2410 (time/op): 0.00482
+K 5 N 5
+Total Running time 3087 (time/op): 0.006174
+Total Running time 3681 (time/op): 0.007362
+Total Running time 3294 (time/op): 0.006588
+Total Running time 2957 (time/op): 0.005914
+Total Running time 3035 (time/op): 0.00607
+eventual rd
+K 1 N 5
+Total Running time 1062 (time/op): 0.002124
+Total Running time 1003 (time/op): 0.002006
+Total Running time 1246 (time/op): 0.002492
+Total Running time 1644 (time/op): 0.003288
+Total Running time 1422 (time/op): 0.002844
+K 3 N 5
+Total Running time 791 (time/op): 0.001582
+Total Running time 1308 (time/op): 0.002616
+Total Running time 1085 (time/op): 0.00217
+Total Running time 1354 (time/op): 0.002708
+Total Running time 1201 (time/op): 0.002402
+K 5 N 5
+Total Running time 1016 (time/op): 0.002032
+Total Running time 1406 (time/op): 0.002812
+Total Running time 1192 (time/op): 0.002384
+Total Running time 1097 (time/op): 0.002194
+Total Running time 1207 (time/op): 0.002414
