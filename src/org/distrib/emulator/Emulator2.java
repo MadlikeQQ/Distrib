@@ -92,8 +92,12 @@ public class Emulator2 {
     	}
 		
 
+
 	//	startT = System.currentTimeMillis();
 		file =  Paths.get("query.txt");
+		startT = System.currentTimeMillis();
+/*		file =  Paths.get("query.txt");
+
 		reader = Files.newBufferedReader(file,charset);
 		j = 1;
 		while( (line=reader.readLine()) != null )   {
@@ -112,9 +116,6 @@ public class Emulator2 {
 			System.out.println("Total Running time " + elapsed + " (time/op): " + (float)elapsed / ((j-1)*1000));
 			//System.out.println((float) (endTime- startT) / ((j-1) * 1000 ));
 		}*/
-		
-		
-		
 		/*
 		 * Uncomment below for interactive input to emulator
 		 */

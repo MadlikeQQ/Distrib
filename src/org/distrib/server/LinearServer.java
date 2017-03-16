@@ -23,7 +23,7 @@ import org.distrib.emulator.Emulator;
 import org.distrib.emulator.Emulator2;
 
 
-public class LinearServer extends Server implements Runnable {
+public class LinearServer extends Thread implements Runnable {
 
 	public String myId;
 	public boolean coord;
@@ -38,7 +38,7 @@ public class LinearServer extends Server implements Runnable {
 	private Tuple<String,Integer> previous = null;
 	private int port = 0;
 	public Emulator2 parent = null;
-	private ExecutorService workerThreadPool;
+	private ThreadPoolExecutor workerThreadPool;
 	private boolean hasToRun = true;
 	private boolean running = false;
 	public ServerSocket serverSocket;
@@ -297,7 +297,7 @@ public class LinearServer extends Server implements Runnable {
 		XRequest xreq = new XRequest("join","redistribute");
 		xreq.setSource(port);
 		xreq.setDestination(node.next.b);
-		node.start();
+		new Thread(parent.nodes.get(i)).start();
 		return xreq;
 	}
 	
@@ -324,7 +324,7 @@ public class LinearServer extends Server implements Runnable {
 			
 		}
 		parent.nodes.get(i).queueShutdown();
-		Request shutdown = null;
+		Request shutdown = new Request();
 		//send msg to node for termination
 		new Thread(new Client("127.0.0.1",parent.nodes.get(i).getLocalPort(),shutdown)).start();
 		parent.nodes.remove(i);
@@ -369,6 +369,7 @@ public class LinearServer extends Server implements Runnable {
 		addShutdownHook();
 		
 		startSignal.countDown();
+		
 		
 		while(hasToRun)
 		{
@@ -506,6 +507,8 @@ public class LinearServer extends Server implements Runnable {
 							xreq.setSource(req.getSource());
 							xreq.setDestination(next.b);
 							xreq.setSerialVersionID(req.getSerialVersionID());
+							xreq.setMaster(port);
+							xreq.setPrevVal(result.get(0).b.a);
 							new Thread(new Client("127.0.0.1",next.b,xreq)).start();
 						}
 						else{
@@ -620,6 +623,15 @@ public class LinearServer extends Server implements Runnable {
 				case "query":
 					key =  operands.substring(1, operands.length()) ;
 					k = xreq.getK();
+					ArrayList<Tuple<String,Tuple<String,Integer>>> qres = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
+					qres = getSet(key);
+					if(!xreq.getPrevVal().equals(qres.get(0).b.a)){
+                        Request req = new Request(xreq.getCommand());
+                        req.setSerialVersionID(xreq.getSerialVersionID());
+                        req.setSource(xreq.getSource());
+                        new Thread(new Client("127.0.0.1",xreq.getMaster(),req)).start();
+                        break;
+                    }
 					if(k-1 >0){
 						//fwd xreq to next
 						xreq.setK(k-1);
@@ -628,8 +640,7 @@ public class LinearServer extends Server implements Runnable {
 					}
 					else if (k - 1 == 0){
 						keySHA = Key.sha1(key);
-						ArrayList<Tuple<String,Tuple<String,Integer>>> qres = new ArrayList<Tuple<String,Tuple<String,Integer>>>();
-						qres = getSet(key);
+						
 						src = xreq.getSource();
 						response = new Response("query",qres);
 						response.setDestination(src);
@@ -666,6 +677,7 @@ public class LinearServer extends Server implements Runnable {
 			else if (type.equals("join")){
 				operation = xreq.getCommand();
 				if(xreq.getDestination() == port){
+					System.out.println("received join redistribute (new previous node)");
 					ArrayList<Tuple<String,Tuple<String, Integer>>> result = new ArrayList<Tuple<String,Tuple<String, Integer>>>();
 					result = getRightKeys();
 					Response sendKeys = new Response("joinbatch", result);
@@ -786,7 +798,6 @@ public class LinearServer extends Server implements Runnable {
 		}
 		
 		
-		@Override
 		public void run(){
 			ObjectInputStream in = null;
 			try{

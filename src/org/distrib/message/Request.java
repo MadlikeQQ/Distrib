@@ -8,7 +8,9 @@ public class Request extends Message implements Serializable {
 	private String operation = "";
 	private String operands = "";
 	private String command = "";
-	
+    private int masterport=0;
+    private String value =null;
+    
 	public Request() {
 		super();
 	}
@@ -46,4 +48,20 @@ public class Request extends Message implements Serializable {
 	public void setSerialVersionID(long id){
 		this.serialVersionUID = id;
 	}
+	public void setMaster(int port){
+        this.masterport= port;
+    }
+
+    public int getMaster(){
+        return masterport;
+    }
+
+    public void setPrevVal(String value){
+        this.value=value;
+    }
+
+    public String getPrevVal(){
+        return value;
+    }
+
 }

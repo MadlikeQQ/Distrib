@@ -296,7 +296,7 @@ public class EventualServer extends Thread implements Runnable {
 		XRequest xreq = new XRequest("join","redistribute");
 		xreq.setSource(port);
 		xreq.setDestination(node.next.b);
-		node.start();
+		new Thread(parent.nodes.get(i)).start();
 		return xreq;
 	} 
 	public void departPointers(int i){
@@ -322,7 +322,7 @@ public class EventualServer extends Thread implements Runnable {
 			
 		}
 		parent.nodes.get(i).queueShutdown();
-		Request shutdown = null;
+		Request shutdown = new Request();
 		//send msg to node for termination
 		new Thread(new Client("127.0.0.1",parent.nodes.get(i).getLocalPort(),shutdown)).start();
 		parent.nodes.remove(i);
@@ -629,6 +629,7 @@ public class EventualServer extends Thread implements Runnable {
 			else if (type.equals("join")){
 				operation = xreq.getCommand();
 				if(xreq.getDestination() == port){
+					System.out.println("received join redistribute (new previous node)");
 					ArrayList<Tuple<String,Tuple<String, Integer>>> result = new ArrayList<Tuple<String,Tuple<String, Integer>>>();
 					result = getRightKeys();
 					Response sendKeys = new Response("joinbatch", result);
